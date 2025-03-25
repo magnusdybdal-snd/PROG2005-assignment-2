@@ -1,0 +1,22 @@
+image: golang:latest
+
+stages:
+  - test
+  - build
+
+format:
+  stage: test
+  script:
+    - PKGS=$(go list ./... | grep -v /vendor/)
+    - go fmt $PKGS
+    - go vet $PKGS
+    - go test -race ./tests
+
+compile:
+  stage: build
+  script:
+    - mkdir -p bin
+    - go build -o bin ./...
+  artifacts:
+    paths:
+      - bin
