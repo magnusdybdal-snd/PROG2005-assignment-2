@@ -1,12 +1,6 @@
 package main
 
 import (
-	"log"
-	"net/http"
-	"os"
-)
-
-import (
 	"assigment2/handlers"
 	"assigment2/utils"
 	"log"
