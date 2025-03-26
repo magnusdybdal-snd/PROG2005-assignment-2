@@ -29,7 +29,7 @@ func StubHandlerCountries(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		log.Println("Recieved " + r.Method + " request on Countries stub handler. Returning mocked information.")
 		w.Header().Add("content-type", "application/json")
-		output := ParseFile("./testdata/countries.json")
+		output := ParseFile(string("../../testdata/countries.json"))
 		fmt.Fprint(w, string(output))
 		break
 	default:
@@ -46,7 +46,7 @@ func StubHandlerCurrencies(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		log.Println("Recieved " + r.Method + " request on Currencies stub handler. Returning mocked information.")
 		w.Header().Add("content-type", "application/json")
-		output := ParseFile("./testdata/currencies.json")
+		output := ParseFile("../../testdata/currencies.json")
 		fmt.Fprint(w, string(output))
 		break
 	default:
@@ -63,7 +63,7 @@ func StubHandlerWeather(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		log.Println("Recieved " + r.Method + " request on Weather stub handler. Returning mocked information.")
 		w.Header().Add("content-type", "application/json")
-		output := ParseFile("./testdata/weather.json")
+		output := ParseFile("../../testdata/weather.json")
 		fmt.Fprint(w, string(output))
 		break
 	default:
