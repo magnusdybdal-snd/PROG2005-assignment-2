@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"assigment2/utils"
+	"assignment2/utils"
 	"fmt"
 	"log"
 	"net/http"

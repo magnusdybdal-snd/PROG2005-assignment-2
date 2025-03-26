@@ -1,8 +1,8 @@
 package main
 
 import (
-	"assigment2/handlers"
-	"assigment2/utils"
+	"assignment2/handlers"
+	"assignment2/utils"
 	"cloud.google.com/go/firestore"
 	"context"
 	firebase "firebase.google.com/go"
