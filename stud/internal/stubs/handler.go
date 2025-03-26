@@ -37,13 +37,33 @@ func StubHandlerCountries(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/*
+Responds with fixed JSON output sourced from provided file.
+*/
 func StubHandlerCurrencies(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
 		log.Println("Recieved " + r.Method + " request on Currencies stub handler. Returning mocked information.")
 		w.Header().Add("content-type", "application/json")
-		output := ParseFile("./testdata/countries.json")
+		output := ParseFile("./testdata/currencies.json")
+		fmt.Fprint(w, string(output))
+		break
+	default:
+		http.Error(w, "Method not supported", http.StatusMethodNotAllowed)
+	}
+}
+
+/*
+Responds with fixed JSON output sourced from provided file.
+*/
+func StubHandlerWeather(w http.ResponseWriter, r *http.Request) {
+
+	switch r.Method {
+	case http.MethodGet:
+		log.Println("Recieved " + r.Method + " request on Weather stub handler. Returning mocked information.")
+		w.Header().Add("content-type", "application/json")
+		output := ParseFile("./testdata/weather.json")
 		fmt.Fprint(w, string(output))
 		break
 	default:
