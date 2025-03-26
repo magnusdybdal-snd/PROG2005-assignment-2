@@ -36,3 +36,17 @@ func StubHandlerCountries(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not supported", http.StatusMethodNotAllowed)
 	}
 }
+
+func StubHandlerCurrencies(w http.ResponseWriter, r *http.Request) {
+
+	switch r.Method {
+	case http.MethodGet:
+		log.Println("Recieved " + r.Method + " request on Currencies stub handler. Returning mocked information.")
+		w.Header().Add("content-type", "application/json")
+		output := ParseFile("./testdata/countries.json")
+		fmt.Fprint(w, string(output))
+		break
+	default:
+		http.Error(w, "Method not supported", http.StatusMethodNotAllowed)
+	}
+}
