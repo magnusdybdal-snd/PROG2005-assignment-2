@@ -16,14 +16,15 @@ func main() {
 	}
 	defer utils.CloseFirestore()
 
-	http.HandleFunc(utils.ROOT_PATH, handlers.RootPath)
-	http.HandleFunc(utils.DASHBOARD_PATH, handlers.HandleGetDashboard)
-
 	port := os.Getenv("PORT")
 	if port == "" {
 		log.Println("Port has not been set, using default 8080")
 		port = "8080"
 	}
+	http.HandleFunc(utils.ROOT_PATH, handlers.RootPath)
+	http.HandleFunc(utils.DASHBOARD_PATH, handlers.HandleGetDashboard)
+	http.HandleFunc(utils.NOTIFICATION_PATH+"{ID}", handlers.HandleNotification)
+	//	http.HandleFunc(utils.NOTIFICATION_PATH, handlers.HandleMessages)
 
 	log.Println("Starting server on port: " + port + "...")
 	log.Fatal(http.ListenAndServe(":"+port, nil))
