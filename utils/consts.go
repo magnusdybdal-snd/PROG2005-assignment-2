@@ -7,7 +7,7 @@ const DASHBOARD_PATH = "/dashboard/v1/dashboards/"
 const NOTIFICATION_PATH = "/dashboard/v1/notifications/"
 const STATUS_PATH = "/dashboard/v1/status/"
 
-// api's
-const RESTCountriesAPI = "http://129.241.150.113:8080/v3.1"
-//TODO: add the metro API
-const CurrencyAPI = "http://129.241.150.113:9090/currency/"
+// API's currently poiting to mocked service, make sure its running first.
+const RESTCountriesAPI = "localhost:8081/v3.1/alpha/{code}"
+const MetroAPI = "localhost:8081/v1/forecast?latitude={lat}&longitude={long}&hourly=temperature_2m,precipitation"
+const CurrencyAPI = "localhost:8081/currency/{code}"

@@ -15,9 +15,9 @@ func main() {
 		port = "8081"
 	}
 
-	http.HandleFunc("/countries/no", stubs.StubHandlerCountries)
-	http.HandleFunc("/weather/no", stubs.StubHandlerWeather)
-	http.HandleFunc("/currency/no", stubs.StubHandlerCurrencies)
+	http.HandleFunc("/v3.1/alpha/", stubs.StubHandlerCountries)
+	http.HandleFunc("/v1/forecast", stubs.StubHandlerWeather)
+	http.HandleFunc("/currency/", stubs.StubHandlerCurrencies)
 
 	log.Println("Running on port: ", port)
 
