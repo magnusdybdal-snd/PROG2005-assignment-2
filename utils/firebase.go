@@ -9,31 +9,28 @@ import (
 	"google.golang.org/api/option"
 )
 
-var ctx context.Context
-var client *firestore.Client
+var Ctx context.Context
+var Client *firestore.Client
 
-func intializeFirebase() {
-	ctx = context.Background()
+func IntializeFirebase() {
+	Ctx = context.Background()
+	//todo: fix the file location
+	opt := option.WithCredentialsFile("/home/olemgl/Documents/Skole/sem4/assignment2/api-keys/serviceAccountKey.json") // API KEY NEEDS TO BE LOCAL! - and added to .gitignore!
 
-	opt := option.WithCredentialsFile("../api-keys/serviceAccountKey.json") // API KEY NEEDS TO BE LOCAL! - and added to .gitignore!
-	app, err := firebase.NewApp(ctx, nil, opt)
+	app, err := firebase.NewApp(Ctx, nil, opt)
 	if err != nil {
 		log.Fatal("error initializing app: ", err)
-
 	}
 
-	client, err = app.Firestore(ctx)
+	Client, err = app.Firestore(Ctx)
 
 	if err != nil {
 		log.Fatal("Error initializing firestore: ", err)
 	}
-
-	defer client.Close()
 }
 
-func getFirebaseInfo() (context.Context, *firestore.Client) {
-	if client != nil {
-		intializeFirebase()
+func CloseFirebase() {
+	if Client != nil {
+		Client.Close()
 	}
-	return ctx, client
 }
