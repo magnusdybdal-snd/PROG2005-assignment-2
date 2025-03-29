@@ -3,7 +3,7 @@ package utils
 import "time"
 
 /*
-*	Struct for dashboard get response.
+*	Struct for dashboard configuration.
  */
 type DashboardConfig struct {
 	Country string					`firestore:"country" json:"country"`
@@ -18,4 +18,32 @@ type DashboardConfig struct {
 		TargetCurrencies []string 	`firestore:"targetCurrencies" json:"targetCurrencies"`
 	}								`firestore:"features" json:"features"`
 	LastRetrieval time.Time			`firestore:"lastChange" json:"lastChange"`
+}
+
+
+/*
+*	Struct populated with the response from RestCountries
+*/
+type RestCountriesResponse struct {
+	Capital []string 			   	`json:"capital"`
+	Coordinates []int		       	`json:"latlng"`
+	Population int                 	`json:"population"`
+	Area int						`json:"area"`
+}
+
+/*
+*	Struct populated with the response from MetroAPI
+*/
+type MetroResponse struct {
+	Hourly struct {
+		Precipitation []int       	`json:"precipitation"`
+		Temperature2M []float64    	`json:"temperature_2m"`
+	} 								`json:"hourly"`
+}
+
+/*
+*	Struct populated with the response from CurrencyAPI
+*/
+type CurrencyResponse struct {
+	Rates map[string]float64		`json:"rates"`
 }
