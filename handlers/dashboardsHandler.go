@@ -48,6 +48,15 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 		return
 	}
 
+	// Find out which API calls we need to do
+	needRestCountriesAPI := dashboardConfig.Features.Capital     || dashboardConfig.Features.Coordinates ||
+						    dashboardConfig.Features.Area        || dashboardConfig.Features.Population ||
+						    dashboardConfig.Features.Temperature || dashboardConfig.Features.Precipiation
+	
+	needMetroAPI :=			dashboardConfig.Features.Temperature || dashboardConfig.Features.Precipiation
+
+	needCurrencyAPI :=		len(dashboardConfig.Features.TargetCurrencies) > 0
+	
 }
 
 func (h *DashboardHandler) getDashboardConfig (ctx context.Context, dashboardId string) (utils.DashboardConfig, error) {
