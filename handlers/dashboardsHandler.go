@@ -3,6 +3,8 @@ package handlers
 import (
 	"assignment2/utils"
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -56,6 +58,18 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 	needMetroAPI :=			dashboardConfig.Features.Temperature || dashboardConfig.Features.Precipiation
 
 	needCurrencyAPI :=		len(dashboardConfig.Features.TargetCurrencies) > 0
+
+	fmt.Printf("DEBUG: needMetroAPI=%v, needCurrencyAPI=%v\n", needMetroAPI, needCurrencyAPI)
+
+	// Gets the data from REST Countries if needed
+	if needRestCountriesAPI {
+		_, err := h.getRestCountriesData(ctx, dashboardConfig.IsoCode)
+		if err != nil {
+			log.Printf("Error getting RestCountries data: %v", err)
+			http.Error(w, "Error getting country information", http.StatusInternalServerError)
+			return
+		}
+	}
 	
 }
 
@@ -79,9 +93,35 @@ func (h *DashboardHandler) getDashboardConfig (ctx context.Context, dashboardId 
 		return utils.DashboardConfig{}, err
 	}
 
-	log.Printf("Retrieved dashboard for %s (ISO: %s)", config.Country, config.IsoCode)
-
 	return config, nil
 }
 
+func (h *DashboardHandler) getRestCountriesData (ctx context.Context, IsoCode string) (utils.RestCountriesResponse, error) {
 
+	url := utils.RESTCountriesAPI + IsoCode
+
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Printf("Failed to fetch country info from REST Countries: %v", err)
+		return utils.RestCountriesResponse{}, fmt.Errorf("error fetching country info form REST Countries: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Check the HTTP status code
+	if resp.StatusCode != http.StatusOK {
+		return utils.RestCountriesResponse{}, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
+	}
+
+	// Decodes json response into struct. REST Countries always returns an array of countries, even tho we only ask for one
+	var apiResponse []utils.RestCountriesResponse
+	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
+		return utils.RestCountriesResponse{}, fmt.Errorf("error when decoding json: %v", err)
+	}
+
+	// Checks that the apiResponse slice is not empty
+	if len(apiResponse) == 0 {
+		return utils.RestCountriesResponse{}, fmt.Errorf("apiResponse slice is empty: %v", err)
+	}
+
+	return apiResponse[0], nil
+}
