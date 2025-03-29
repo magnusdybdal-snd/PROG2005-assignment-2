@@ -36,7 +36,7 @@ type RestCountriesResponse struct {
 */
 type MetroResponse struct {
 	Hourly struct {
-		Precipitation []int       	`json:"precipitation"`
+		Precipitation []float64     `json:"precipitation"`
 		Temperature2M []float64    	`json:"temperature_2m"`
 	} 								`json:"hourly"`
 }

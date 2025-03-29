@@ -59,14 +59,33 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 
 	needCurrencyAPI :=		len(dashboardConfig.Features.TargetCurrencies) > 0
 
+	// REMOVE WHEN DONE
 	fmt.Printf("DEBUG: needMetroAPI=%v, needCurrencyAPI=%v\n", needMetroAPI, needCurrencyAPI)
+
+	var restCountriesData utils.RestCountriesResponse
+	var metroData utils.MetroResponse
+	var currencyData utils.CurrencyResponse
+
+	// REMOVE WHEN DONE
+	fmt.Printf("DEBUG: %v %v", metroData, currencyData)
 
 	// Gets the data from REST Countries if needed
 	if needRestCountriesAPI {
-		_, err := h.getRestCountriesData(ctx, dashboardConfig.IsoCode)
+		// REPLACE _ WITH ACTUAL VARIABLE FOR LATER USE
+		restCountriesData, err = h.getRestCountriesData(dashboardConfig.IsoCode)
 		if err != nil {
 			log.Printf("Error getting RestCountries data: %v", err)
 			http.Error(w, "Error getting country information", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Gets the data from Metro API if needed
+	if needMetroAPI {
+		_, err := h.getMetroData(restCountriesData.Coordinates[0], restCountriesData.Coordinates[1])
+		if err != nil {
+			log.Printf("Error getting MetroAPI data: %v", err)
+			http.Error(w, "Error getting weather information", http.StatusInternalServerError)
 			return
 		}
 	}
@@ -96,10 +115,12 @@ func (h *DashboardHandler) getDashboardConfig (ctx context.Context, dashboardId 
 	return config, nil
 }
 
-func (h *DashboardHandler) getRestCountriesData (ctx context.Context, IsoCode string) (utils.RestCountriesResponse, error) {
+func (h *DashboardHandler) getRestCountriesData (IsoCode string) (utils.RestCountriesResponse, error) {
 
+	// Url to invoke
 	url := utils.RESTCountriesAPI + IsoCode
 
+	// Uses http.Get to setup standard client and do the request
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Printf("Failed to fetch country info from REST Countries: %v", err)
@@ -124,4 +145,35 @@ func (h *DashboardHandler) getRestCountriesData (ctx context.Context, IsoCode st
 	}
 
 	return apiResponse[0], nil
+}
+
+/*
+*	This function invokes the Metro API with the parameter latitude and logitude, and returns temperature and precipiation hourly
+*	for a 7 day forecast as a struct with two lists. TODO: calculate mean value and return the mean values as a list?? 
+*/
+func (h* DashboardHandler) getMetroData (lat int, long int) (utils.MetroResponse, error) {
+
+	// Url to invoke
+	url := fmt.Sprintf(utils.MetroAPI, lat, long)
+
+	// Uses http.Get with standard client and does the request
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Printf("Failed to fetch weather data from Metro API: %v", err)
+		return utils.MetroResponse{}, fmt.Errorf("error fetching weather data from Metro API: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Check the HTTP status code
+	if resp.StatusCode != http.StatusOK {
+		return utils.MetroResponse{}, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
+	}
+
+	// Decodes json response into struct. REST Countries always returns an array of countries, even tho we only ask for one
+	var apiResponse utils.MetroResponse
+	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
+		return utils.MetroResponse{}, fmt.Errorf("error when decoding json: %v", err)
+	}
+
+	return apiResponse, nil
 }

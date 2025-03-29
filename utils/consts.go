@@ -9,5 +9,5 @@ const STATUS_PATH = "/dashboard/v1/status/"
 
 // API's currently poiting to mocked service, make sure its running first.
 const RESTCountriesAPI = "http://localhost:8081/v3.1/alpha/"
-const MetroAPI = "http://localhost:8081/v1/forecast?latitude={lat}&longitude={long}&hourly=temperature_2m,precipitation"
+const MetroAPI = "http://localhost:8081/v1/forecast?latitude=%d&longitude=%d&hourly=temperature_2m,precipitation"
 const CurrencyAPI = "http://localhost:8081/currency/"
