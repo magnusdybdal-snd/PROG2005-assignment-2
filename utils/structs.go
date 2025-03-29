@@ -1,7 +1,9 @@
 package utils
 
+import "time"
+
 /*
-*	Struct for dashboard configuration.
+*	Struct for dashboard get response.
  */
 type DashboardConfig struct {
 	Country string					`firestore:"country" json:"country"`
@@ -15,4 +17,5 @@ type DashboardConfig struct {
 		Area bool					`firestore:"area" json:"area"`
 		TargetCurrencies []string 	`firestore:"targetCurrencies" json:"targetCurrencies"`
 	}								`firestore:"features" json:"features"`
+	LastRetrieval time.Time			`firestore:"lastChange" json:"lastChange"`
 }
