@@ -6,6 +6,7 @@ import (
 	"assignment2/utils"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -35,6 +36,19 @@ func HandleNotification(w http.ResponseWriter, r *http.Request) {
 }
 
 func registerNewWebhook(w http.ResponseWriter, r *http.Request) {
+	//making sure the path is correct
+	if r.URL.Path != utils.NOTIFICATION_PATH {
+		w.Header().Set("content-type", "text/html")
+		w.WriteHeader(http.StatusNotFound)
+		output := "Expected path is: " + utils.NOTIFICATION_PATH + "<br>" +
+			"Supported methods are: " + http.MethodPost + http.MethodDelete + http.MethodGet
+		_, err := fmt.Fprint(w, output)
+		if err != nil {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		}
+		return
+	}
+
 	//struct to be registerd
 	var data utils.RegisterWebhook
 
