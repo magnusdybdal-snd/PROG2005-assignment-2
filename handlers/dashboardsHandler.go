@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"cloud.google.com/go/firestore"
 )
@@ -52,7 +53,7 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 
 	// Find out which API calls we need to do.
 	// Both Metro and Currency need information from RestCountries to be invoked
-	needMetroAPI :=			dashboardConfig.Features.Temperature || dashboardConfig.Features.Precipiation
+	needMetroAPI :=			dashboardConfig.Features.Temperature || dashboardConfig.Features.Precipitation
 
 	needCurrencyAPI :=		len(dashboardConfig.Features.TargetCurrencies) > 0
 	
@@ -62,11 +63,8 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 
 
 	var restCountriesData utils.RestCountriesResponse
-	var metroData utils.MetroResponse
-	var currencyData utils.CurrencyResponse
-
-	// REMOVE WHEN DONE
-	fmt.Printf("DEBUG: %v %v", metroData, currencyData)
+	var metroData utils.MetroMeanValues
+	var currencyData map[string]float64
 
 	// Gets the data from REST Countries if needed
 	if needRestCountriesAPI {
@@ -80,7 +78,7 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 
 	// Gets the data from Metro API if needed
 	if needMetroAPI {
-		_, err := h.getMetroData(restCountriesData.Coordinates[0], restCountriesData.Coordinates[1])
+		metroData, err = h.getMetroData(restCountriesData.Coordinates[0], restCountriesData.Coordinates[1])
 		if err != nil {
 			log.Printf("Error getting MetroAPI data: %v", err)
 			http.Error(w, "Error getting weather information", http.StatusInternalServerError)
@@ -90,7 +88,7 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 
 	// Gets the data from Currency API if needed
 	if needCurrencyAPI {
-		_, err := h.getCurrencyData(restCountriesData.Currencies)
+		currencyData, err = h.getCurrencyData(restCountriesData.Currencies, dashboardConfig.Features.TargetCurrencies)
 		if err != nil {
 			log.Printf("Error getting Currency API data: %v", err)
 			http.Error(w, "Error getting currency information", http.StatusInternalServerError)
@@ -98,8 +96,39 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 		}
 	}
 	
-	
+	var response utils.DashboardResponse
+	response.Country = dashboardConfig.Country
+	response.IsoCode = dashboardConfig.IsoCode
+	response.LastRetrieval = time.Now()
 
+	if dashboardConfig.Features.Capital {
+		response.Features.Capital = restCountriesData.Capital[0]
+	}
+
+	if dashboardConfig.Features.Area {
+		response.Features.Area = restCountriesData.Area
+	}
+
+	if dashboardConfig.Features.Population {
+		response.Features.Population = restCountriesData.Population
+	}
+
+	if dashboardConfig.Features.Coordinates {
+		response.Features.Coordinates.Latitude  = float64(restCountriesData.Coordinates[0])
+		response.Features.Coordinates.Longitude = float64(restCountriesData.Coordinates[1])
+	}
+
+	if dashboardConfig.Features.Temperature {
+		response.Features.Temperature = metroData.MeanTemperature
+	}
+
+	if dashboardConfig.Features.Precipitation {
+		response.Features.Precipitation = metroData.MeanPrecipitation
+	}
+
+	if needCurrencyAPI {
+		response.Features.TargetCurrencies = currencyData		
+	}
 }
 
 func (h *DashboardHandler) getDashboardConfig (ctx context.Context, dashboardId string) (utils.DashboardConfig, error) {
@@ -160,7 +189,7 @@ func (h *DashboardHandler) getRestCountriesData (IsoCode string) (utils.RestCoun
 *	This function invokes the Metro API with the parameter latitude and logitude, and returns temperature and precipiation hourly
 *	for a 7 day forecast as a struct with two lists. TODO: calculate mean value and return the mean values as a list?? 
 */
-func (h* DashboardHandler) getMetroData (lat int, long int) (utils.MetroResponse, error) {
+func (h* DashboardHandler) getMetroData (lat int, long int) (utils.MetroMeanValues, error) {
 
 	// Url to invoke
 	url := fmt.Sprintf(utils.MetroAPI, lat, long)
@@ -168,34 +197,51 @@ func (h* DashboardHandler) getMetroData (lat int, long int) (utils.MetroResponse
 	// Uses http.Get with standard client and does the request
 	resp, err := http.Get(url)
 	if err != nil {
-		return utils.MetroResponse{}, fmt.Errorf("error fetching weather data from Metro API: %v", err)
+		return utils.MetroMeanValues{}, fmt.Errorf("error fetching weather data from Metro API: %v", err)
 	}
 	defer resp.Body.Close()
 
 	// Check the HTTP status code
 	if resp.StatusCode != http.StatusOK {
-		return utils.MetroResponse{}, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
+		return utils.MetroMeanValues{}, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
 	}
 
 	// Decodes json response into struct. REST Countries always returns an array of countries, even tho we only ask for one
 	var apiResponse utils.MetroResponse
 	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
-		return utils.MetroResponse{}, fmt.Errorf("error when decoding json: %v", err)
+		return utils.MetroMeanValues{}, fmt.Errorf("error when decoding json: %v", err)
 	}
 
-	return apiResponse, nil
+	meanPrecip := calculateMean(apiResponse.Hourly.Precipitation)
+	meanTemp := calculateMean(apiResponse.Hourly.Temperature2M)
+
+	meanResponse := utils.MetroMeanValues{
+		MeanPrecipitation: meanPrecip,
+		MeanTemperature: meanTemp,
+	}
+
+	return meanResponse, nil
 }
 
-func (h* DashboardHandler) getCurrencyData (currencies map[string]interface{}) (utils.CurrencyResponse, error) {
+func calculateMean(val []float64) float64 {
+	sum := 0.0
+	for _, v := range val {
+		sum += v
+	}
+	return sum / float64(len(val))
+}
+
+func (h* DashboardHandler) getCurrencyData (currencies map[string]interface{}, targetCurrencies []string) (map[string]float64, error) {
 	// Extracts the FIRST currency if there are more than one 
 	var currencyISO string
 	for iso := range currencies {
 		currencyISO = iso
 		break
 	}
+	filteredRates := make(map[string]float64)
 	// Checks that a currency is found in the response
 	if currencyISO == "" {
-		return utils.CurrencyResponse{}, fmt.Errorf("error: no currencies found in response")
+		return filteredRates, fmt.Errorf("error: no currencies found in response")
 	}
 	// url to invoke
 	url := utils.CurrencyAPI + currencyISO
@@ -203,19 +249,26 @@ func (h* DashboardHandler) getCurrencyData (currencies map[string]interface{}) (
 	// Uses http.Get with standard client and does the request
 	resp, err := http.Get(url)
 	if err != nil {
-		return utils.CurrencyResponse{}, fmt.Errorf("error fetching currency data from Currency API: %v", err)
+		return filteredRates, fmt.Errorf("error fetching currency data from Currency API: %v", err)
 	}
 	defer resp.Body.Close()
 
 	// Check the HTTP status code
 	if resp.StatusCode != http.StatusOK {
-		return utils.CurrencyResponse{}, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
+		return filteredRates, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
 	}
 	// Decodes json response into struct.
 	var apiResponse utils.CurrencyResponse
 	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
-		return utils.CurrencyResponse{}, fmt.Errorf("error when decoding json: %v", err)
+		return filteredRates, fmt.Errorf("error when decoding json: %v", err)
 	}
 
-	return apiResponse, nil
+	// Adds the wanted currencies from the API response to the map presented in the response
+	for _, currency := range targetCurrencies {
+		if rate, exists := apiResponse.Rates[currency]; exists {
+			filteredRates[currency] = rate
+		}
+	}
+
+	return filteredRates, nil
 }
