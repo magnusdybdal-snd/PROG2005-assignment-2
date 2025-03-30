@@ -50,17 +50,16 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 		return
 	}
 
-	// Find out which API calls we need to do
-	needRestCountriesAPI := dashboardConfig.Features.Capital     || dashboardConfig.Features.Coordinates ||
-						    dashboardConfig.Features.Area        || dashboardConfig.Features.Population ||
-						    dashboardConfig.Features.Temperature || dashboardConfig.Features.Precipiation
-	
+	// Find out which API calls we need to do.
+	// Both Metro and Currency need information from RestCountries to be invoked
 	needMetroAPI :=			dashboardConfig.Features.Temperature || dashboardConfig.Features.Precipiation
 
 	needCurrencyAPI :=		len(dashboardConfig.Features.TargetCurrencies) > 0
+	
+	needRestCountriesAPI := dashboardConfig.Features.Capital     || dashboardConfig.Features.Coordinates ||
+						    dashboardConfig.Features.Area        || dashboardConfig.Features.Population ||
+						    needMetroAPI						 || needCurrencyAPI
 
-	// REMOVE WHEN DONE
-	fmt.Printf("DEBUG: needMetroAPI=%v, needCurrencyAPI=%v\n", needMetroAPI, needCurrencyAPI)
 
 	var restCountriesData utils.RestCountriesResponse
 	var metroData utils.MetroResponse
@@ -71,7 +70,6 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 
 	// Gets the data from REST Countries if needed
 	if needRestCountriesAPI {
-		// REPLACE _ WITH ACTUAL VARIABLE FOR LATER USE
 		restCountriesData, err = h.getRestCountriesData(dashboardConfig.IsoCode)
 		if err != nil {
 			log.Printf("Error getting RestCountries data: %v", err)
@@ -89,7 +87,19 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 			return
 		}
 	}
+
+	// Gets the data from Currency API if needed
+	if needCurrencyAPI {
+		_, err := h.getCurrencyData(restCountriesData.Currencies)
+		if err != nil {
+			log.Printf("Error getting Currency API data: %v", err)
+			http.Error(w, "Error getting currency information", http.StatusInternalServerError)
+			return
+		}
+	}
 	
+	
+
 }
 
 func (h *DashboardHandler) getDashboardConfig (ctx context.Context, dashboardId string) (utils.DashboardConfig, error) {
@@ -123,7 +133,6 @@ func (h *DashboardHandler) getRestCountriesData (IsoCode string) (utils.RestCoun
 	// Uses http.Get to setup standard client and do the request
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Printf("Failed to fetch country info from REST Countries: %v", err)
 		return utils.RestCountriesResponse{}, fmt.Errorf("error fetching country info form REST Countries: %v", err)
 	}
 	defer resp.Body.Close()
@@ -159,7 +168,6 @@ func (h* DashboardHandler) getMetroData (lat int, long int) (utils.MetroResponse
 	// Uses http.Get with standard client and does the request
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Printf("Failed to fetch weather data from Metro API: %v", err)
 		return utils.MetroResponse{}, fmt.Errorf("error fetching weather data from Metro API: %v", err)
 	}
 	defer resp.Body.Close()
@@ -173,6 +181,40 @@ func (h* DashboardHandler) getMetroData (lat int, long int) (utils.MetroResponse
 	var apiResponse utils.MetroResponse
 	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
 		return utils.MetroResponse{}, fmt.Errorf("error when decoding json: %v", err)
+	}
+
+	return apiResponse, nil
+}
+
+func (h* DashboardHandler) getCurrencyData (currencies map[string]interface{}) (utils.CurrencyResponse, error) {
+	// Extracts the FIRST currency if there are more than one 
+	var currencyISO string
+	for iso := range currencies {
+		currencyISO = iso
+		break
+	}
+	// Checks that a currency is found in the response
+	if currencyISO == "" {
+		return utils.CurrencyResponse{}, fmt.Errorf("error: no currencies found in response")
+	}
+	// url to invoke
+	url := utils.CurrencyAPI + currencyISO
+
+	// Uses http.Get with standard client and does the request
+	resp, err := http.Get(url)
+	if err != nil {
+		return utils.CurrencyResponse{}, fmt.Errorf("error fetching currency data from Currency API: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Check the HTTP status code
+	if resp.StatusCode != http.StatusOK {
+		return utils.CurrencyResponse{}, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
+	}
+	// Decodes json response into struct.
+	var apiResponse utils.CurrencyResponse
+	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
+		return utils.CurrencyResponse{}, fmt.Errorf("error when decoding json: %v", err)
 	}
 
 	return apiResponse, nil
