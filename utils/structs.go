@@ -27,16 +27,13 @@ type DashboardResponse struct {
 	Country string						`json:"country"`
 	IsoCode string						`json:"isoCode"`
 	Features struct {
-		Temperature float64				`json:"temperature"`
-		Precipitation float64			`json:"precipitation"`
-		Capital string					`json:"capital"`
-		Coordinates struct {
-			Latitude float64			`json:"latitude"`
-			Longitude float64			`json:"longitude"`
-		}								`json:"coordinates"`
-		Population int					`json:"population"`
-		Area int						`json:"area"`
-		TargetCurrencies map[string]float64 `json:"targetCurrencies"`
+		Temperature float64				`json:"temperature,omitempty"`
+		Precipitation float64			`json:"precipitation,omitempty"`
+		Capital string					`json:"capital,omitempty"`
+		Coordinates map[string]float64  `json:"coordinates,omitempty"`
+		Population int					`json:"population,omitempty"`
+		Area int						`json:"area,omitempty"`
+		TargetCurrencies map[string]float64 `json:"targetCurrencies,omitempty"`
 	}									`json:"features"`
 	LastRetrieval time.Time				`json:"lastRetrieval"`
 }

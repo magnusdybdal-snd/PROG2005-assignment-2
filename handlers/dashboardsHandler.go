@@ -1,5 +1,10 @@
 package handlers
 
+/*
+*	TODO: 	Add timeouts for API calls
+	TODO:	Consider adding context to http request for proper timeout management
+*/
+
 import (
 	"assignment2/utils"
 	"context"
@@ -39,7 +44,7 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 	dashboardId := r.PathValue("id")
 	if dashboardId == "" {
 		log.Println("Error, dashboard id is required")
-		http.Error(w, "error dashboard is is required.", http.StatusBadRequest)
+		http.Error(w, "error dashboard id is required.", http.StatusBadRequest)
 		return
 	}
 
@@ -114,8 +119,10 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 	}
 
 	if dashboardConfig.Features.Coordinates {
-		response.Features.Coordinates.Latitude  = float64(restCountriesData.Coordinates[0])
-		response.Features.Coordinates.Longitude = float64(restCountriesData.Coordinates[1])
+		response.Features.Coordinates = map[string]float64{
+			"latitude":  float64(restCountriesData.Coordinates[0]),
+			"longitude": float64(restCountriesData.Coordinates[1]),
+		}
 	}
 
 	if dashboardConfig.Features.Temperature {
@@ -129,7 +136,18 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 	if needCurrencyAPI {
 		response.Features.TargetCurrencies = currencyData		
 	}
+
+	// Set the response content type to JSON
+	w.Header().Set("Content-Type", "application/json")
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("error encoding response: %v", err)
+		http.Error(w, "failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
+
+
 
 func (h *DashboardHandler) getDashboardConfig (ctx context.Context, dashboardId string) (utils.DashboardConfig, error) {
 
@@ -139,7 +157,7 @@ func (h *DashboardHandler) getDashboardConfig (ctx context.Context, dashboardId 
 	// Fetches the data from the document
 	doc, err := docRef.Get(ctx)
 	if err != nil {
-		log.Println("Failed to get dashboard document %s, %v" + dashboardId, err)
+		log.Println("Failed to get dashboard document %s: %v" + dashboardId, err)
 		return utils.DashboardConfig{}, err
 	}
 
@@ -179,7 +197,7 @@ func (h *DashboardHandler) getRestCountriesData (IsoCode string) (utils.RestCoun
 
 	// Checks that the apiResponse slice is not empty
 	if len(apiResponse) == 0 {
-		return utils.RestCountriesResponse{}, fmt.Errorf("apiResponse slice is empty: %v", err)
+		return utils.RestCountriesResponse{}, fmt.Errorf("apiResponse slice is empty")
 	}
 
 	return apiResponse[0], nil
@@ -206,7 +224,7 @@ func (h* DashboardHandler) getMetroData (lat int, long int) (utils.MetroMeanValu
 		return utils.MetroMeanValues{}, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
 	}
 
-	// Decodes json response into struct. REST Countries always returns an array of countries, even tho we only ask for one
+	// Decodes json response into struct.
 	var apiResponse utils.MetroResponse
 	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
 		return utils.MetroMeanValues{}, fmt.Errorf("error when decoding json: %v", err)
@@ -223,14 +241,6 @@ func (h* DashboardHandler) getMetroData (lat int, long int) (utils.MetroMeanValu
 	return meanResponse, nil
 }
 
-func calculateMean(val []float64) float64 {
-	sum := 0.0
-	for _, v := range val {
-		sum += v
-	}
-	return sum / float64(len(val))
-}
-
 func (h* DashboardHandler) getCurrencyData (currencies map[string]interface{}, targetCurrencies []string) (map[string]float64, error) {
 	// Extracts the FIRST currency if there are more than one 
 	var currencyISO string
@@ -238,37 +248,50 @@ func (h* DashboardHandler) getCurrencyData (currencies map[string]interface{}, t
 		currencyISO = iso
 		break
 	}
-	filteredRates := make(map[string]float64)
 	// Checks that a currency is found in the response
 	if currencyISO == "" {
-		return filteredRates, fmt.Errorf("error: no currencies found in response")
+		return nil, fmt.Errorf("error: no currencies found in response")
 	}
 	// url to invoke
 	url := utils.CurrencyAPI + currencyISO
-
+	
 	// Uses http.Get with standard client and does the request
 	resp, err := http.Get(url)
 	if err != nil {
-		return filteredRates, fmt.Errorf("error fetching currency data from Currency API: %v", err)
+		return nil, fmt.Errorf("error fetching currency data from Currency API: %v", err)
 	}
 	defer resp.Body.Close()
-
+	
 	// Check the HTTP status code
 	if resp.StatusCode != http.StatusOK {
-		return filteredRates, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
 	}
 	// Decodes json response into struct.
 	var apiResponse utils.CurrencyResponse
 	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
-		return filteredRates, fmt.Errorf("error when decoding json: %v", err)
+		return nil, fmt.Errorf("error when decoding json: %v", err)
 	}
-
+	
+	filteredRates := make(map[string]float64)
 	// Adds the wanted currencies from the API response to the map presented in the response
 	for _, currency := range targetCurrencies {
 		if rate, exists := apiResponse.Rates[currency]; exists {
 			filteredRates[currency] = rate
 		}
 	}
-
+	
 	return filteredRates, nil
+}
+
+func calculateMean(val []float64) float64 {
+
+	if len(val) == 0 {
+		return 0
+	}
+
+	sum := 0.0
+	for _, v := range val {
+		sum += v
+	}
+	return sum / float64(len(val))
 }
