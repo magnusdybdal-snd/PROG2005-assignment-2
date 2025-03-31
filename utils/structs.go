@@ -90,7 +90,7 @@ type CurrencyResponse struct {
 	Rates map[string]float64 `json:"rates"`
 }
 
-//used to return the ID of the webhook
+// used to return the ID of the webhook
 type WebhookId struct {
 	ID string `json:"id"`
 }
