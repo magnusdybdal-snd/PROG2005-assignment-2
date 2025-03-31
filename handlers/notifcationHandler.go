@@ -30,7 +30,7 @@ func HandleNotification(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		getWebhooks(w, r)
 	default:
-		
+
 	}
 }
 
