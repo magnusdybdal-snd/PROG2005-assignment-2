@@ -14,9 +14,6 @@ import (
 
 // TODO legge inn fprintf.log for error logging i stedet for log.Println
 
-// Collection name in Firestore
-const collection = "dashboards"
-
 var ctx context.Context
 var client *firestore.Client
 
@@ -77,7 +74,7 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request) {
 
 		s.LastRetrieval = time.Now() // update timestamp
 
-		id, _, err2 := client.Collection(collection).Add(ctx, s)
+		id, _, err2 := client.Collection(utils.DASHBOARD_COLLECTION).Add(ctx, s)
 		if err2 != nil {
 			log.Println("Error when adding document:", err2)
 			http.Error(w, "Error when adding document: "+err2.Error(), http.StatusBadRequest)

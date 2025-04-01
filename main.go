@@ -6,10 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-
-	"cloud.google.com/go/firestore"
-	firebase "firebase.google.com/go"
-	"google.golang.org/api/option"
 )
 
 func main() {
@@ -22,9 +18,6 @@ func main() {
 
 	http.HandleFunc(utils.ROOT_PATH, handlers.RootPath)
 	http.HandleFunc(utils.DASHBOARD_PATH, handlers.HandleGetDashboard)
-
-	// Pass the client to the handlers
-	handlers.InitFirestore(client, ctx)
 
 	port := os.Getenv("PORT")
 	if port == "" {
