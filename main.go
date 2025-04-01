@@ -3,13 +3,9 @@ package main
 import (
 	"assignment2/handlers"
 	"assignment2/utils"
-	"context"
 	"log"
 	"net/http"
 	"os"
-
-	firebase "firebase.google.com/go"
-	"google.golang.org/api/option"
 )
 
 func main() {
@@ -28,7 +24,7 @@ func main() {
 	http.HandleFunc(utils.ROOT_PATH, handlers.RootPath)
 	http.HandleFunc(utils.DASHBOARD_PATH, handlers.HandleGetDashboard)
 	http.HandleFunc(utils.NOTIFICATION_PATH+"{ID}", handlers.HandleNotification)
-	http.HandleFunc(utils.NOTIFICATION_PATH, handlers.HandleMessages)
+	//http.HandleFunc(utils., handlers.HandleMessages)
 
 	log.Println("Starting server on port: " + port + "...")
 	log.Fatal(http.ListenAndServe(":"+port, nil))
