@@ -18,6 +18,8 @@ func main() {
 
 	http.HandleFunc(utils.ROOT_PATH, handlers.RootPath)
 	http.HandleFunc(utils.DASHBOARD_PATH, handlers.HandleGetDashboard)
+	http.HandleFunc(utils.REGISTRATION_PATH+"{id}", handlers.HandleMessages)
+	http.HandleFunc(utils.REGISTRATION_PATH, handlers.HandleMessages) // for get request without an {id}
 
 	port := os.Getenv("PORT")
 	if port == "" {
