@@ -23,11 +23,43 @@ func HandleMessages(w http.ResponseWriter, r *http.Request) {
 		displayDocument(w, r, ctx)
 	case http.MethodPost:
 		registerDashConfig(w, r, ctx) // Ensures that registration of dashboard config handles POST requests.
+	case http.MethodDelete:
+		deleteDocument(w, r, ctx)
 	default:
 		log.Println("Unsupported method " + r.Method)
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
+}
+
+/*
+* Deletes documents using {"id"} in DELETE request.
+ */
+func deleteDocument(w http.ResponseWriter, r *http.Request, ctx context.Context) {
+	log.Println("Received " + r.Method + " request.")
+
+	// Extract id from URL.
+	messageId := r.PathValue("id")
+
+	// Retrieve specific message based on id (Firestore-generated hash)
+	res := utils.FirestoreClient.Collection(utils.DASHBOARD_COLLECTION).Doc(messageId)
+
+	// Checks if the document exists in database.
+	_, err := res.Get(ctx)
+	if err != nil {
+		log.Println("Document ID does not exist. Id: " + messageId)
+		http.Error(w, http.StatusText(http.StatusBadRequest)+": Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+	// Retrieve reference to document.
+	_, err2 := res.Delete(ctx)
+	if err2 != nil {
+		log.Println("Delete request for document " + messageId + " failed.")
+		http.Error(w, "Failed to delete document", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 /*
