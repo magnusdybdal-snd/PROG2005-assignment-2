@@ -7,39 +7,19 @@ package handlers
 
 import (
 	"assignment2/utils"
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
-
-	"cloud.google.com/go/firestore"
 )
 
 const collection = "dashboards"
 
-type DashboardHandler struct {
-	fsClient *firestore.Client
-}
 
-func NewDashboardHandler (fsClient *firestore.Client) *DashboardHandler {
-	return &DashboardHandler{fsClient: fsClient}
-}
+func HandleGetDashboard (w http.ResponseWriter, r *http.Request) {
 
-func (h *DashboardHandler) ServeHTTP (w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
-	switch r.Method {
-	case http.MethodGet:
-		h.handleGetDashboard(ctx, w, r)
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
-}
-
-func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.ResponseWriter, r *http.Request) {
-
 	// Test for embedded dashboard id
 	dashboardId := r.PathValue("id")
 	if dashboardId == "" {
@@ -49,7 +29,7 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 	}
 
 	// Retrieves the dashboard configuration from firestore database
-	dashboardConfig, err := h.getDashboardConfig(ctx, dashboardId)
+	dashboardConfig, err := utils.GetDashboardConfig(ctx, dashboardId, collection)
 	if err != nil {
 		log.Printf("Error retrieving dashboard config from database: %v", err)
 		http.Error(w, "error retrieving dashboard", http.StatusInternalServerError)
@@ -73,7 +53,7 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 
 	// Gets the data from REST Countries if needed
 	if needRestCountriesAPI {
-		restCountriesData, err = h.getRestCountriesData(dashboardConfig.IsoCode)
+		restCountriesData, err = getRestCountriesData(dashboardConfig.IsoCode)
 		if err != nil {
 			log.Printf("Error getting RestCountries data: %v", err)
 			http.Error(w, "Error getting country information", http.StatusInternalServerError)
@@ -83,7 +63,7 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 
 	// Gets the data from Metro API if needed
 	if needMetroAPI {
-		metroData, err = h.getMetroData(restCountriesData.Coordinates[0], restCountriesData.Coordinates[1])
+		metroData, err = getMetroData(float64(restCountriesData.Coordinates[0]), float64(restCountriesData.Coordinates[1]))
 		if err != nil {
 			log.Printf("Error getting MetroAPI data: %v", err)
 			http.Error(w, "Error getting weather information", http.StatusInternalServerError)
@@ -93,7 +73,7 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 
 	// Gets the data from Currency API if needed
 	if needCurrencyAPI {
-		currencyData, err = h.getCurrencyData(restCountriesData.Currencies, dashboardConfig.Features.TargetCurrencies)
+		currencyData, err = getCurrencyData(restCountriesData.Currencies, dashboardConfig.Features.TargetCurrencies)
 		if err != nil {
 			log.Printf("Error getting Currency API data: %v", err)
 			http.Error(w, "Error getting currency information", http.StatusInternalServerError)
@@ -147,32 +127,7 @@ func (h *DashboardHandler) handleGetDashboard (ctx context.Context, w http.Respo
 	}
 }
 
-
-
-func (h *DashboardHandler) getDashboardConfig (ctx context.Context, dashboardId string) (utils.DashboardConfig, error) {
-
-	// Gets reference to firestore document
-	docRef := h.fsClient.Collection(collection).Doc(dashboardId)
-
-	// Fetches the data from the document
-	doc, err := docRef.Get(ctx)
-	if err != nil {
-		log.Println("Failed to get dashboard document %s: %v" + dashboardId, err)
-		return utils.DashboardConfig{}, err
-	}
-
-	// Unmarshals the data in the document to struct
-	var config utils.DashboardConfig
-	err2 := doc.DataTo(&config)
-	if err2 != nil {
-		log.Printf("Failed to unmarshal dashboard config: %s: %v", dashboardId, err)
-		return utils.DashboardConfig{}, err
-	}
-
-	return config, nil
-}
-
-func (h *DashboardHandler) getRestCountriesData (IsoCode string) (utils.RestCountriesResponse, error) {
+func getRestCountriesData (IsoCode string) (utils.RestCountriesResponse, error) {
 
 	// Url to invoke
 	url := utils.RESTCountriesAPI + IsoCode
@@ -207,7 +162,7 @@ func (h *DashboardHandler) getRestCountriesData (IsoCode string) (utils.RestCoun
 *	This function invokes the Metro API with the parameter latitude and logitude, and returns temperature and precipiation hourly
 *	for a 7 day forecast as a struct with two lists. TODO: calculate mean value and return the mean values as a list?? 
 */
-func (h* DashboardHandler) getMetroData (lat int, long int) (utils.MetroMeanValues, error) {
+func getMetroData (lat float64, long float64) (utils.MetroMeanValues, error) {
 
 	// Url to invoke
 	url := fmt.Sprintf(utils.MetroAPI, lat, long)
@@ -241,7 +196,7 @@ func (h* DashboardHandler) getMetroData (lat int, long int) (utils.MetroMeanValu
 	return meanResponse, nil
 }
 
-func (h* DashboardHandler) getCurrencyData (currencies map[string]interface{}, targetCurrencies []string) (map[string]float64, error) {
+func getCurrencyData (currencies map[string]interface{}, targetCurrencies []string) (map[string]float64, error) {
 	// Extracts the FIRST currency if there are more than one 
 	var currencyISO string
 	for iso := range currencies {

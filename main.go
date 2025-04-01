@@ -3,43 +3,21 @@ package main
 import (
 	"assignment2/handlers"
 	"assignment2/utils"
-	"context"
 	"log"
 	"net/http"
 	"os"
-
-	"cloud.google.com/go/firestore"
-	firebase "firebase.google.com/go"
-	"google.golang.org/api/option"
 )
-
-var ctx context.Context
-var client *firestore.Client
 
 func main() {
 
-	ctx = context.Background()
-
-	opt := option.WithCredentialsFile("/mnt/c/Users/magnu/OneDrive - NTNU/Skrivebord/NTNU/4SEM/PROG2005/assignment-2/serviceAccountKey.json") // API KEY NEEDS TO BE LOCAL! - and added to .gitignore!
-	app, err := firebase.NewApp(ctx, nil, opt)
-	if err != nil {
-		log.Printf("error initializing app: %v", err)
-		return
+	// Initialize Firestore
+	if err := utils.InitFirestore(); err != nil {
+		log.Fatalf("Error initializing Firestore: %v", err)
 	}
-
-	client, err = app.Firestore(ctx)
-
-	if err != nil {
-		log.Printf("Error initializing firestore: %v", err)
-		return
-	}
-
-	defer client.Close()
-
-	dashboardHandler := handlers.NewDashboardHandler(client)
+	defer utils.CloseFirestore()
 
 	http.HandleFunc(utils.ROOT_PATH, handlers.RootPath)
-	http.HandleFunc(utils.DASHBOARD_PATH, dashboardHandler.ServeHTTP)
+	http.HandleFunc(utils.DASHBOARD_PATH, handlers.HandleGetDashboard)
 
 	port := os.Getenv("PORT")
 	if port == "" {
