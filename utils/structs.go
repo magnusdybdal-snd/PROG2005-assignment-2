@@ -19,3 +19,12 @@ type DashboardConfig struct {
 	} `firestore:"features" json:"features"`
 	LastRetrieval time.Time `firestore:"lastChange" json:"lastChange"`
 }
+
+/*
+* Struct for registration GET responses
+* ..using DashboardConfig
+ */
+type RegistrationGetResponse struct {
+	Id string
+	DashboardConfig
+}

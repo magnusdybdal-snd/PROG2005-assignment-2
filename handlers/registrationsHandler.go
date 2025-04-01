@@ -4,19 +4,20 @@ import (
 	"assignment2/utils"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net/http"
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"google.golang.org/api/iterator"
 )
-
-// TODO legge inn fprintf.log for error logging i stedet for log.Println
 
 // Collection name in Firestore
 const collection = "dashboards"
 
+// ctx := r.context
 var ctx context.Context
 var client *firestore.Client
 
@@ -26,10 +27,13 @@ func InitFirestore(fc *firestore.Client, context context.Context) {
 	ctx = context
 }
 
+/*
+* Handle different types of requests.
+ */
 func HandleMessages(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		log.Println("Not yet implemented " + r.Method)
+		displayDocument(w, r)
 	case http.MethodPost:
 		registerDashConfig(w, r) // Ensures that registration of dashboard config handles POST requests.
 	default:
@@ -39,6 +43,9 @@ func HandleMessages(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+/*
+* Registers Dashboard configuratuins in firestore.
+ */
 func registerDashConfig(w http.ResponseWriter, r *http.Request) {
 	// Initial client error handling
 	if client == nil {
@@ -47,8 +54,8 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//log.Println("Starting registerDashConfig handler") // debug log
-	//log.Println("Content-Type:", r.Header.Get("Content-Type")) // debug log
+	log.Println("Starting registerDashConfig handler")
+	log.Println("Content-Type:", r.Header.Get("Content-Type"))
 
 	content, err := io.ReadAll(r.Body) // TODO read payload and check that it is up to spec.
 	if err != nil {
@@ -57,14 +64,14 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//log.Println("Request body:", string(content)) // debug log
+	log.Println("Request body:", string(content))
 
 	if len(string(content)) == 0 {
-		//log.Println("Content appears to be empty.") // debug log
+		log.Println("Content appears to be empty.")
 		http.Error(w, "Your payload (to be stored as document) appears to be empty. Ensure to terminate URI with /.", http.StatusBadRequest)
 		return
 	} else {
-		//log.Println("Unmarshalling JSON") // debug log
+		log.Println("Unmarshalling JSON")
 		s := utils.DashboardConfig{}
 		err := json.Unmarshal(content, &s)
 		if err != nil {
@@ -73,7 +80,7 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		//log.Println("Unmarshalled successfully, adding to Firestore") // debug log
+		log.Println("Unmarshalled successfully, adding to Firestore")
 
 		s.LastRetrieval = time.Now() // update timestamp
 
@@ -82,6 +89,7 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request) {
 			log.Println("Error when adding document:", err2)
 			http.Error(w, "Error when adding document: "+err2.Error(), http.StatusBadRequest)
 			return
+
 		} else {
 			log.Println("Document added successfully, creating response")
 			response := struct {
@@ -99,7 +107,7 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			//log.Println("Setting headers and writing response") // debug log
+			log.Println("Setting headers and writing response")
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
 
@@ -109,8 +117,80 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request) {
 			} else {
 				log.Println("Wrote", n, "bytes successfully")
 			}
-			//log.Println("Handler completed successfully") // debug log
+			log.Println("Handler completed successfully")
 			return
 		}
+	}
+}
+
+/*
+* Reads a string from the body in plain-text and sends it to Firestore to be registered as a document.
+ */
+func displayDocument(w http.ResponseWriter, r *http.Request) {
+
+	var response interface{}
+	log.Println("Received " + r.Method + " request.")
+
+	// Test for embedded message ID
+	messageId := r.PathValue("id")
+
+	// ID id provided in URL
+	if messageId != "" {
+
+		// Retrieve specific message based on id (Firestore-generated hash)
+		res := client.Collection(collection).Doc(messageId)
+
+		// Retrieve reference to document
+		doc, err2 := res.Get(ctx)
+		if err2 != nil {
+			log.Println("Document ID does not exist. Id: " + messageId)
+			http.Error(w, http.StatusText(http.StatusBadRequest)+": Invalid ID", http.StatusBadRequest)
+			return
+		}
+
+		// Creating instance of stuct to be sent.
+		var documentResponse utils.RegistrationGetResponse
+		documentResponse.Id = messageId // Add document ID to struct.
+		if err := doc.DataTo(&documentResponse); err != nil {
+			log.Println("Failed to construct struct response")
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		}
+		response = documentResponse
+
+		// No ID in URL: Send all documents.
+	} else {
+		iter := client.Collection(collection).Documents(ctx)
+
+		// Array used to store multiple documents.
+		var registrations []utils.RegistrationGetResponse
+
+		// Loop over documents.
+		for {
+			doc, err := iter.Next()
+			if errors.Is(err, iterator.Done) {
+				break
+			}
+			if err != nil {
+				log.Printf("failed to iterate: %v", err)
+				return
+			}
+
+			// Populate struct with values.
+			var documentResponse utils.RegistrationGetResponse
+			documentResponse.Id = doc.Ref.ID // Add document ID to main.
+			if err := doc.DataTo(&documentResponse); err != nil {
+				log.Println("Failed to construct struct response")
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			}
+			// Append each document into array.
+			registrations = append(registrations, documentResponse)
+		}
+
+		response = registrations
+	}
+	w.Header().Set("content-type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Println("Encoding of struct failed. ")
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }

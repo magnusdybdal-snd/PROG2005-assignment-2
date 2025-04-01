@@ -45,7 +45,8 @@ func main() {
 		port = "8080"
 	}
 	http.HandleFunc(utils.ROOT_PATH, handlers.RootPath)
-	http.HandleFunc(utils.REGISTRATION_PATH, handlers.HandleMessages)
+	http.HandleFunc(utils.REGISTRATION_PATH+"{id}", handlers.HandleMessages)
+	http.HandleFunc(utils.REGISTRATION_PATH, handlers.HandleMessages) // for get request without an {id}
 
 	log.Println("Starting server on port: " + port + "...")
 	log.Fatal(http.ListenAndServe(":"+port, nil))
