@@ -70,3 +70,14 @@ type MetroMeanValues struct {
 type CurrencyResponse struct {
 	Rates map[string]float64			`json:"rates"`
 }
+
+/*
+* Struct for registration GET responses
+* ..using DashboardConfig
+ */
+type RegistrationGetResponse struct {
+	Id string
+	DashboardConfig
+}
+
+
