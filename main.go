@@ -3,7 +3,6 @@ package main
 import (
 	"assignment2/handlers"
 	"assignment2/utils"
-	"context"
 	"log"
 	"net/http"
 	"os"
@@ -13,28 +12,16 @@ import (
 	"google.golang.org/api/option"
 )
 
-var ctx context.Context
-var client *firestore.Client
-
 func main() {
 
-	ctx = context.Background()
-
-	opt := option.WithCredentialsFile("api-keys/serviceAccountKey.json") // API KEY NEEDS TO BE LOCAL! - and added to .gitignore!
-	app, err := firebase.NewApp(ctx, nil, opt)
-	if err != nil {
-		log.Printf("error initializing app: %v", err)
-		return
+	// Initialize Firestore
+	if err := utils.InitFirestore(); err != nil {
+		log.Fatalf("Error initializing Firestore: %v", err)
 	}
+	defer utils.CloseFirestore()
 
-	client, err := app.Firestore(ctx)
-
-	if err != nil {
-		log.Printf("Error initializing firestore: %v", err)
-		return
-	}
-
-	defer client.Close()
+	http.HandleFunc(utils.ROOT_PATH, handlers.RootPath)
+	http.HandleFunc(utils.DASHBOARD_PATH, handlers.HandleGetDashboard)
 
 	// Pass the client to the handlers
 	handlers.InitFirestore(client, ctx)
@@ -44,8 +31,6 @@ func main() {
 		log.Println("Port has not been set, using default 8080")
 		port = "8080"
 	}
-	http.HandleFunc(utils.ROOT_PATH, handlers.RootPath)
-	http.HandleFunc(utils.REGISTRATION_PATH, handlers.HandleMessages)
 
 	log.Println("Starting server on port: " + port + "...")
 	log.Fatal(http.ListenAndServe(":"+port, nil))
