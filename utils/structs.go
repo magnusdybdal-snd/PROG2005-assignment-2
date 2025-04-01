@@ -79,3 +79,5 @@ type RegistrationGetResponse struct {
 	Id string
 	DashboardConfig
 }
+
+
