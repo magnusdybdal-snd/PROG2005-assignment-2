@@ -13,6 +13,8 @@ import (
 	"google.golang.org/api/iterator"
 )
 
+// TODO make content reading roboust! issue #16
+
 /*
 * Handle different types of requests.
  */
@@ -22,13 +24,86 @@ func HandleMessages(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		displayDocument(w, r, ctx)
 	case http.MethodPost:
-		registerDashConfig(w, r, ctx) // Ensures that registration of dashboard config handles POST requests.
+		registerDashConfig(w, r, ctx)
 	case http.MethodDelete:
 		deleteDocument(w, r, ctx)
+	case http.MethodPut:
+		updateDocument(w, r, ctx)
 	default:
 		log.Println("Unsupported method " + r.Method)
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
+	}
+}
+
+/*
+* Updates a specific dashboard-configuration, based on ID in URL.
+ */
+func updateDocument(w http.ResponseWriter, r *http.Request, ctx context.Context) {
+	log.Println("Received " + r.Method + " request.")
+	messageId := r.PathValue("id")
+
+	// Retrieve specific message based on id (Firestore-generated hash)
+	res := utils.FirestoreClient.Collection(utils.DASHBOARD_COLLECTION).Doc(messageId)
+
+	// Checks if the document exists in database.
+	doc, err := res.Get(ctx)
+	if err != nil {
+		log.Println("Document ID does not exist. Id: " + messageId)
+		http.Error(w, http.StatusText(http.StatusBadRequest)+": Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+	content, err := io.ReadAll(r.Body) // TODO make read of struct more robust. issue #16
+	if err != nil {
+		log.Println("Reading payload from body failed:", err)
+		http.Error(w, "Reading payload failed.", http.StatusInternalServerError)
+		return
+	}
+
+	if len(string(content)) == 0 {
+		log.Println("Content appears to be empty.")
+		http.Error(w, "Your payload (to be stored as document) appears to be empty. Ensure to terminate URI with /.", http.StatusBadRequest)
+		return
+	}
+
+	log.Println("Request body:", string(content))
+
+	// Create a variable for the existing data
+	var existingData utils.DashboardAlterationTime
+	if err := doc.DataTo(&existingData); err != nil {
+		log.Println("Failed to parse existing document:", err)
+		http.Error(w, "Failed to parse existing document", http.StatusInternalServerError)
+		return
+	}
+
+	// Parse the update request
+	var updateData utils.DashboardAlteration
+	if err := json.Unmarshal(content, &updateData); err != nil {
+		log.Println("Error unmarshalling payload:", err)
+		http.Error(w, "Error unmarshalling payload: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Create the updated document with new data and timestamp
+	var updatedDoc utils.DashboardAlterationTime
+	updatedDoc.DashboardAlteration = updateData
+	updatedDoc.LastRetrieval = time.Now() // update timestamp
+
+	// Update the document in Firestore
+	_, err = res.Set(ctx, updatedDoc)
+	if err != nil {
+		log.Println("Error updating document:", err)
+		http.Error(w, "Failed to update document: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Return the updated document
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(updatedDoc); err != nil {
+		log.Println("Error encoding response:", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
 
@@ -76,7 +151,7 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Cont
 	log.Println("Starting registerDashConfig handler")
 	log.Println("Content-Type:", r.Header.Get("Content-Type"))
 
-	content, err := io.ReadAll(r.Body) // TODO read payload and check that it is up to spec.
+	content, err := io.ReadAll(r.Body) // TODO read payload and check that it is up to spec. issue #16
 	if err != nil {
 		log.Println("Reading payload from body failed:", err)
 		http.Error(w, "Reading payload failed.", http.StatusInternalServerError)
@@ -133,11 +208,10 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Cont
 			n, err := w.Write(responseJSON) // This sould be fine as long as the json is checked properly ln53.
 			if err != nil {
 				log.Println("Error writing response:", err)
+				return
 			} else {
 				log.Println("Wrote", n, "bytes successfully")
 			}
-			log.Println("Handler completed successfully")
-			return
 		}
 	}
 }
