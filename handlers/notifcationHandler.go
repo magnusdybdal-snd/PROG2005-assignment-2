@@ -4,24 +4,19 @@ package handlers
 
 import (
 	"assignment2/utils"
-	"context"
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"cloud.google.com/go/firestore"
 	"google.golang.org/api/iterator"
 )
 
-var ctx context.Context
 var client *firestore.Client
 
-func InitFirestore(fc *firestore.Client) {
-	client = fc
-}
-
 func HandleNotification(w http.ResponseWriter, r *http.Request) {
-	ctx = r.Context()
+	client = utils.FirestoreClient
 	switch r.Method {
 	case http.MethodPost:
 		registerNewWebhook(w, r)
@@ -35,6 +30,8 @@ func HandleNotification(w http.ResponseWriter, r *http.Request) {
 }
 
 func registerNewWebhook(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	//struct to be registerd
 	var data utils.RegisterWebhook
 
@@ -47,6 +44,8 @@ func registerNewWebhook(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unknown fields are present", http.StatusBadRequest)
 		return
 	}
+
+	data.Country = strings.ToUpper(data.Country)
 
 	//make sure that the data is valid
 	if data.Url == "" || checkEvent(data) || len(data.Country) != 2 {
@@ -77,6 +76,7 @@ func registerNewWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func deleteWebhook(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	//get the document ID
 	webhookID := r.PathValue("id")
 
@@ -108,9 +108,10 @@ func deleteWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func getWebhooks(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	//get the path
 	webhookID := r.PathValue("id")
-
+	log.Println(webhookID)
 	//end response
 	var response interface{}
 
@@ -178,6 +179,38 @@ func getWebhooks(w http.ResponseWriter, r *http.Request) {
 		log.Println("Error encoding JSON response:", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
+}
+
+func retriveWebhooks(r *http.Request) ([]utils.ReturnWebhook, error) {
+	ctx := r.Context()
+
+	var webhooks []utils.ReturnWebhook
+	iter := client.Collection(utils.WebhooksCollection).Documents(ctx)
+	defer iter.Stop()
+
+	//loop over the documents
+	for {
+		//get the document
+		doc, err := iter.Next()
+		//tells the for loop when to break out
+		if err == iterator.Done {
+			break
+		}
+		//in case of an unforseen error
+		if err != nil {
+			log.Println("Error fetching document from Firebase:", err)
+			return nil, err
+		}
+		//format the response into a struct
+		var webhook utils.ReturnWebhook
+		if err := doc.DataTo(&webhook); err != nil {
+			log.Println("Error mapping data from Firestore into struct:", err)
+			return nil, err
+		}
+		webhook.ID = doc.Ref.ID
+		webhooks = append(webhooks, webhook)
+	}
+	return webhooks, nil
 }
 
 // used to check if the event is correct

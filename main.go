@@ -23,8 +23,8 @@ func main() {
 	}
 	http.HandleFunc(utils.ROOT_PATH, handlers.RootPath)
 	http.HandleFunc(utils.DASHBOARD_PATH, handlers.HandleGetDashboard)
-	http.HandleFunc(utils.NOTIFICATION_PATH+"{ID}", handlers.HandleNotification)
-	//http.HandleFunc(utils., handlers.HandleMessages)
+	http.HandleFunc(utils.NOTIFICATION_PATH+"{id}", handlers.HandleNotification)
+	http.HandleFunc(utils.NOTIFICATION_PATH, handlers.HandleNotification)
 
 	log.Println("Starting server on port: " + port + "...")
 	log.Fatal(http.ListenAndServe(":"+port, nil))

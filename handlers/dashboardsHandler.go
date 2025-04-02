@@ -26,7 +26,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Retrieves the dashboard configuration from firestore database
-	dashboardConfig, err := utils.GetDashboardConfig(ctx, dashboardId, utils.DASHBOARD_COLLECTION)
+	dashboardConfig, err := utils.GetDashboardConfig[utils.DashboardConfig](ctx, dashboardId, utils.DASHBOARD_COLLECTION)
 	if err != nil {
 		log.Printf("Error retrieving dashboard config from database: %v", err)
 		http.Error(w, "error retrieving dashboard", http.StatusInternalServerError)
@@ -121,6 +121,11 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 		return
 	}
+	webhooks, err := retriveWebhooks(r)
+	if err != nil {
+		return
+	}
+	
 }
 
 func getRestCountriesData(IsoCode string) (utils.RestCountriesResponse, error) {

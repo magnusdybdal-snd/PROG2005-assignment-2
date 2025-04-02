@@ -2,6 +2,12 @@ package utils
 
 import "time"
 
+type SendNotification struct {
+	ID      string `json:"url"`
+	Country string `firestore:"country" json:"country"`
+	Event   string `firestore:"event" json:"event"`
+	Time    string `json:"time"`
+}
 type RegisterWebhook struct {
 	Url     string `firestore:"url" json:"url"`
 	Country string `firestore:"country" json:"country"`
@@ -88,9 +94,4 @@ type MetroMeanValues struct {
  */
 type CurrencyResponse struct {
 	Rates map[string]float64 `json:"rates"`
-}
-
-// used to return the ID of the webhook
-type WebhookId struct {
-	ID string `json:"id"`
 }
