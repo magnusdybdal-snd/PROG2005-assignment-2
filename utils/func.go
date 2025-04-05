@@ -37,6 +37,16 @@ func CallUrl(url string, event string, content ReturnWebhook) {
 	log.Println("Webhook " + url + " invoked, recieved status code " + strconv.Itoa(res.StatusCode))
 }
 
+/*
+*	Function that returns any firestore document, given its collection name and ID.
+*
+*	param ctx - context used by the handler calling the function
+*	param docId - ID of the firestore document
+*	param collection - Name of the firestroe collection
+*
+*	return T - The firestore document that is retrieved
+*	return error - error if document cannot be retrieved
+ */
 func GetDashboardConfig[T any](ctx context.Context, docId string, collection string) (T, error) {
 
 	// Initiate zero value of type T

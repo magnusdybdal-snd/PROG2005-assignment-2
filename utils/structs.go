@@ -46,6 +46,31 @@ type DashboardConfig struct {
 }
 
 /*
+ *	Struct for dashboard alterations (PUT) - without ID and TIME(!)
+ */
+type DashboardAlteration struct {
+	Country  string `firestore:"country" json:"country"`
+	IsoCode  string `firestore:"isoCode" json:"isoCode"`
+	Features struct {
+		Temperature      bool     `firestore:"temperature" json:"temperature"`
+		Precipitation    bool     `firestore:"precipitation" json:"precipitation"`
+		Capital          bool     `firestore:"capital" json:"capital"`
+		Coordinates      bool     `firestore:"coordinates" json:"coordinates"`
+		Population       bool     `firestore:"population" json:"population"`
+		Area             bool     `firestore:"area" json:"area"`
+		TargetCurrencies []string `firestore:"targetCurrencies" json:"targetCurrencies"`
+	} `firestore:"features" json:"features"`
+}
+
+/*
+* Helper struct to update timestamp for registration PUT function.
+ */
+type DashboardAlterationTime struct {
+	DashboardAlteration
+	LastRetrieval time.Time `firestore:"lastChange" json:"lastChange"`
+}
+
+/*
  *	Response struct from dashboards handler
  */
 type DashboardResponse struct {
@@ -94,4 +119,13 @@ type MetroMeanValues struct {
  */
 type CurrencyResponse struct {
 	Rates map[string]float64 `json:"rates"`
+}
+
+/*
+* Struct for registration GET responses
+* ..using DashboardConfig
+ */
+type RegistrationGetResponse struct {
+	Id string
+	DashboardConfig
 }

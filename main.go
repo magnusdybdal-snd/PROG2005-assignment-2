@@ -16,6 +16,7 @@ func main() {
 	}
 	defer utils.CloseFirestore()
 
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		log.Println("Port has not been set, using default 8083")
