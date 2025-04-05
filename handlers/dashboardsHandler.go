@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"time"
 )
@@ -244,5 +245,6 @@ func calculateMean(val []float64) float64 {
 	for _, v := range val {
 		sum += v
 	}
-	return sum / float64(len(val))
+	mean := sum / float64(len(val))
+	return math.Round(mean * 100) / 100
 }
