@@ -48,7 +48,12 @@ func registerNewWebhook(w http.ResponseWriter, r *http.Request) {
 	data.Country = strings.ToUpper(data.Country)
 
 	//make sure that the data is valid
-	if data.Url == "" || checkEvent(data) || len(data.Country) != 2 {
+	if data.Url != "" && len(data.Url) == 2 {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if checkEvent(data) {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
@@ -211,6 +216,20 @@ func retriveWebhooks(r *http.Request) ([]utils.ReturnWebhook, error) {
 		webhooks = append(webhooks, webhook)
 	}
 	return webhooks, nil
+}
+
+func invokeWebhook(event string, countryIso2 string, r *http.Request) {
+	webhooks, err := retriveWebhooks(r)
+	if err != nil {
+		log.Println("Error in retrieving webhooks ", err)
+		return
+	}
+	for _, v := range webhooks {
+		if v.Country == "" || v.Country == countryIso2 && v.Event == event {
+			log.Println("Activated webhook: ", v.ID)
+			go utils.CallUrl(v.Url, utils.INVOKE, v)
+		}
+	}
 }
 
 // used to check if the event is correct
