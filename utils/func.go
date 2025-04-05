@@ -1,12 +1,41 @@
 package utils
 
 import (
-	"assignment2/utils"
+	"bytes"
 	"context"
+	"encoding/json"
 	"log"
+	"net/http"
+	"strconv"
+	"time"
 )
 
-func CallUrl(url string, event string, content utils.SendNotification)
+func CallUrl(url string, event string, content ReturnWebhook) {
+	currentTime := time.Now()
+	invoke := SendNotification{
+		ID:      content.ID,
+		Country: content.Country,
+		Event:   content.Event,
+		Time:    currentTime.Format("20060102 15:04"),
+	}
+	jsonData, err := json.Marshal(invoke)
+	if err != nil {
+		log.Println("Error in encoding JSON for webhook call ", err)
+
+	}
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		log.Println("Error during request creation: ", err)
+		return
+	}
+	client := http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		log.Println("Error in HTTP request: ", err)
+		return
+	}
+	log.Println("Webhook " + url + " invoked, recieved status code " + strconv.Itoa(res.StatusCode))
+}
 
 func GetDashboardConfig[T any](ctx context.Context, docId string, collection string) (T, error) {
 

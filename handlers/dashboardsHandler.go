@@ -123,9 +123,14 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	webhooks, err := retriveWebhooks(r)
 	if err != nil {
+		log.Println("Error in retrieving webhooks ", err)
 		return
 	}
-	
+	for _, v := range webhooks {
+		if v.Country == "" || v.Country == response.IsoCode && v.Event == "INVOKE" {
+			go utils.CallUrl(v.Url, v.Event, v)
+		}
+	}
 }
 
 func getRestCountriesData(IsoCode string) (utils.RestCountriesResponse, error) {

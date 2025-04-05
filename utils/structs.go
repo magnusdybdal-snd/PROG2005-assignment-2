@@ -3,7 +3,7 @@ package utils
 import "time"
 
 type SendNotification struct {
-	ID      string `json:"url"`
+	ID      string `json:"id"`
 	Country string `firestore:"country" json:"country"`
 	Event   string `firestore:"event" json:"event"`
 	Time    string `json:"time"`
