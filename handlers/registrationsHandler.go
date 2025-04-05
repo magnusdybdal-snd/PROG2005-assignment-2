@@ -5,15 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"log"
 	"net/http"
 	"time"
 
 	"google.golang.org/api/iterator"
 )
-
-// TODO make content reading roboust! issue #16
 
 /*
 * Handle different types of requests.
@@ -54,10 +51,10 @@ func updateDocument(w http.ResponseWriter, r *http.Request, ctx context.Context)
 		return
 	}
 
-	content, err := io.ReadAll(r.Body) // TODO make read of struct more robust. issue #16
-	if err != nil {
-		log.Println("Reading payload from body failed:", err)
-		http.Error(w, "Reading payload failed.", http.StatusInternalServerError)
+	// Reads body of POST request
+	var config utils.DashboardAlteration
+	content, err := utils.ValidatePostRequest(&config, w, r)
+	if err != nil { // Error handling (messages) handled in function ValidateostRequest.
 		return
 	}
 
@@ -66,8 +63,6 @@ func updateDocument(w http.ResponseWriter, r *http.Request, ctx context.Context)
 		http.Error(w, "Your payload (to be stored as document) appears to be empty. Ensure to terminate URI with /.", http.StatusBadRequest)
 		return
 	}
-
-	log.Println("Request body:", string(content))
 
 	// Create a variable for the existing data
 	var existingData utils.DashboardAlterationTime
@@ -151,14 +146,11 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Cont
 	log.Println("Starting registerDashConfig handler")
 	log.Println("Content-Type:", r.Header.Get("Content-Type"))
 
-	content, err := io.ReadAll(r.Body) // TODO read payload and check that it is up to spec. issue #16
-	if err != nil {
-		log.Println("Reading payload from body failed:", err)
-		http.Error(w, "Reading payload failed.", http.StatusInternalServerError)
+	var config utils.DashboardAlteration
+	content, err := utils.ValidatePostRequest(&config, w, r)
+	if err != nil { // Error handling (messages) handled in function ValidateostRequest.
 		return
 	}
-
-	log.Println("Request body:", string(content))
 
 	if len(string(content)) == 0 {
 		log.Println("Content appears to be empty.")
