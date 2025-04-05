@@ -26,6 +26,9 @@ func main() {
 	http.HandleFunc(utils.DASHBOARD_PATH, handlers.HandleGetDashboard)
 	http.HandleFunc(utils.NOTIFICATION_PATH+"{id}", handlers.HandleNotification)
 	http.HandleFunc(utils.NOTIFICATION_PATH, handlers.HandleNotification)
+	http.HandleFunc(utils.REGISTRATION_PATH+"{id}", handlers.HandleMessages)
+	http.HandleFunc(utils.REGISTRATION_PATH, handlers.HandleMessages) // for get request without an {id}
+
 
 	log.Println("Starting server on port: " + port + "...")
 	log.Fatal(http.ListenAndServe(":"+port, nil))

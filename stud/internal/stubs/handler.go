@@ -34,7 +34,6 @@ func StubHandlerWebhook(w http.ResponseWriter, r *http.Request) {
 
 		log.Println("Received payload, sending result")
 		log.Println(webhook)
-		log.Println(webhook.ID)
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(webhook); err != nil {
 			log.Println("Unable to send payload: ", err)
