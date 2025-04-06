@@ -23,9 +23,12 @@ func TestCalculateMean (t *testing.T) {
 
 	// Iterates over the test cases in the test table above
 	for _, tc := range testCases {
-		got := calculateMean(tc.input)	// Run calculation for each testcase
-		if got != tc.want {				// Check if the result matches the expected value
-			t.Errorf("calculateMean(%v) == %v, want %v", tc.input, got, tc.want)
-		}
+
+		t.Run(tc.name, func(st *testing.T) {
+			got := calculateMean(tc.input)	// Run calculation for each testcase
+			if got != tc.want {				// Check if the result matches the expected value
+				t.Errorf("calculateMean(%v) == %v, want %v", tc.input, got, tc.want)
+			}
+		})
 	}
 }
