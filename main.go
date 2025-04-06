@@ -19,8 +19,8 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		log.Println("Port has not been set, using default 8083")
-		port = "8083"
+		log.Println("Port has not been set, using default 8080")
+		port = "8080"
 	}
 	http.HandleFunc(utils.ROOT_PATH, handlers.RootPath)
 	http.HandleFunc(utils.DASHBOARD_PATH, handlers.HandleGetDashboard)

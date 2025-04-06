@@ -225,8 +225,8 @@ func invokeWebhook(event string, countryIso2 string, r *http.Request) {
 		return
 	}
 	for _, v := range webhooks {
-		if v.Country == "" || v.Country == countryIso2 && v.Event == event {
-			log.Println("Activated webhook: ", v.ID)
+		if (v.Country == "" || v.Country == countryIso2) && v.Event == event {
+			log.Println("Activated webhook: ", v.ID, " event: ", v.Event)
 			go utils.CallUrl(v.Url, utils.INVOKE, v)
 		}
 	}
