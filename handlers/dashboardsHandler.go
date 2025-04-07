@@ -50,7 +50,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Gets the data from REST Countries if needed
 	if needRestCountriesAPI {
-		restCountriesData, err = getRestCountriesData(dashboardConfig.IsoCode)
+		restCountriesData, err = getRestCountriesData(http.DefaultClient, utils.RESTCountriesAPI, dashboardConfig.IsoCode)
 		if err != nil {
 			log.Printf("Error getting RestCountries data: %v", err)
 			http.Error(w, "Error getting country information", http.StatusInternalServerError)
@@ -124,13 +124,13 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getRestCountriesData(IsoCode string) (utils.RestCountriesResponse, error) {
+func getRestCountriesData(client *http.Client, baseURL string, IsoCode string) (utils.RestCountriesResponse, error) {
 
 	// Url to invoke
-	url := utils.RESTCountriesAPI + IsoCode
+	url := baseURL + IsoCode
 
 	// Uses http.Get to setup standard client and do the request
-	resp, err := http.Get(url)
+	resp, err := client.Get(url)
 	if err != nil {
 		return utils.RestCountriesResponse{}, fmt.Errorf("error fetching country info form REST Countries: %v", err)
 	}
@@ -246,5 +246,5 @@ func calculateMean(val []float64) float64 {
 		sum += v
 	}
 	mean := sum / float64(len(val))
-	return math.Round(mean * 100) / 100
+	return math.Round(mean*100) / 100
 }
