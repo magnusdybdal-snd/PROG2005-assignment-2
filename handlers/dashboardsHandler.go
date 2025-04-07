@@ -60,7 +60,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Gets the data from Metro API if needed
 	if needMetroAPI {
-		metroData, err = getMetroData(float64(restCountriesData.Coordinates[0]), float64(restCountriesData.Coordinates[1]))
+		metroData, err = getMetroData(http.DefaultClient, float64(restCountriesData.Coordinates[0]), float64(restCountriesData.Coordinates[1]))
 		if err != nil {
 			log.Printf("Error getting MetroAPI data: %v", err)
 			http.Error(w, "Error getting weather information", http.StatusInternalServerError)
@@ -129,7 +129,7 @@ func getRestCountriesData(client *http.Client, baseURL string, IsoCode string) (
 	// Url to invoke
 	url := baseURL + IsoCode
 
-	// Uses http.Get to setup standard client and do the request
+	// Uses get with default http client
 	resp, err := client.Get(url)
 	if err != nil {
 		return utils.RestCountriesResponse{}, fmt.Errorf("error fetching country info form REST Countries: %v", err)
@@ -159,7 +159,7 @@ func getRestCountriesData(client *http.Client, baseURL string, IsoCode string) (
 *	This function invokes the Metro API with the parameter latitude and logitude, and returns temperature and precipiation hourly
 *	for a 7 day forecast as a struct with two lists. TODO: calculate mean value and return the mean values as a list??
  */
-func getMetroData(lat float64, long float64) (utils.MetroMeanValues, error) {
+func getMetroData(client *http.Client, lat float64, long float64) (utils.MetroMeanValues, error) {
 
 	// Url to invoke
 	url := fmt.Sprintf(utils.MetroAPI, lat, long)
