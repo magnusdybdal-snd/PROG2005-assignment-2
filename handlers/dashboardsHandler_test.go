@@ -14,7 +14,9 @@ import (
 
 // Tests uses t.Run for naming tests and more customizing when running test
 
-// Uses test tables to test the function calculateMean(...)
+/*
+*	Uses test tables to test the function calculateMean(...)
+ */
 func TestCalculateMean(t *testing.T) {
 	// Defines test cases for calculateMean(...)
 	testCases := []struct {
