@@ -12,6 +12,8 @@ import (
 	"testing"
 )
 
+// Tests uses t.Run for naming tests and more customizing when running test
+
 // Uses test tables to test the function calculateMean(...)
 func TestCalculateMean(t *testing.T) {
 	// Defines test cases for calculateMean(...)
@@ -47,24 +49,28 @@ func TestCalculateMean(t *testing.T) {
 *	Function with tests for getCountriesData()
  */
 func TestGetRestCountriesData(t *testing.T) {
-	// --- API returns 200 OK and correct response
-	// Uses t.Run for more customasation in go test
-	t.Run("Success path for Norway", func(t *testing.T) {
-		isoCode := "no"
-		// Setting up tests with mocked data.
+	// Define standard input(s) used across multiple tests
+	defaultIsoCode := "no"
+	APIstring := "/v3.1/alpha/"
+
+	// === Test Case 1: Success Path ===
+	t.Run("Success country path for Norway", func(t *testing.T) {
+		// 1. Setting up tests with mock JSON response.
 		jsonPath := filepath.Join("testdata", "RestCountriesNorwaySuccess.json")
 		mockJSONResponse, err := os.ReadFile(jsonPath)
 		if err != nil {
 			t.Fatalf("TEST SETUP FAILED: Could not read testfile %s: %v", jsonPath, err)
 		}
-		// Initialises a new server for testing and writes the response
+
+		// 2. Set up test server
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write(mockJSONResponse)
 		}))
 		defer server.Close()
-		// The expected response from CountriesNow (no)
+
+		// 3. Define the expected response
 		expectedData := utils.RestCountriesResponse{
 			Capital:     []string{"Oslo"},
 			Coordinates: []int{62, 10},
@@ -78,9 +84,11 @@ func TestGetRestCountriesData(t *testing.T) {
 			},
 		}
 
+		// 4. Call the function under test
 		testClient := server.Client()
-		actualData, actualErr := getRestCountriesData(testClient, server.URL+"/v3.1/alpha/", isoCode)
+		actualData, actualErr := getRestCountriesData(testClient, server.URL+APIstring, defaultIsoCode)
 
+		// 5. Assertions
 		if actualErr != nil {
 			t.Fatalf("getRestCountriesData() returned an unexpected error: %v", actualErr)
 		}
@@ -89,19 +97,21 @@ func TestGetRestCountriesData(t *testing.T) {
 		}
 	})
 
-	// --- API returns 404 Not Found Scenario
-	// Uses t.Run for more customasation in go test
+	// === Test Case 2: API Returns 404 Status ==
 	t.Run("API returns 404", func(t *testing.T) {
 		isoCode := "zz" // Invalid iso code to cause 404
 
+		// 1. Setup test server to return 404
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound) // 404
 		}))
 		defer server.Close()
 
+		// 2. Call the function under test
 		testClient := server.Client()
-		_, actualErr := getRestCountriesData(testClient, server.URL+"/v3.1/alpha/", isoCode)
+		_, actualErr := getRestCountriesData(testClient, server.URL+APIstring, isoCode)
 
+		// 3. Assertions
 		if actualErr == nil {
 			t.Fatal("getRestCountriesData() expected an error for 404 status, but got nil")
 		}
@@ -111,20 +121,22 @@ func TestGetRestCountriesData(t *testing.T) {
 		}
 	})
 
-	// --- Malformed JSON Response Scenario
+	// === Test Case 3: Malformed JSON Response ===
 	t.Run("Malformed JSON response", func(t *testing.T) {
-		isoCode := "no" // Iso code does not matter as we will write malformed JSON directly
-
+		// 1. Setup test server to return bad JSON
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
+			// Invalid JSON
 			_, _ = w.Write([]byte(`[{"name": {"common": "Norway"}, "capital": ["Oslo"]`))
 		}))
 		defer server.Close()
 
+		// 2. Call the function under test
 		testClient := server.Client()
-		_, actualErr := getRestCountriesData(testClient, server.URL+"/v3.1/alpha/", isoCode)
+		_, actualErr := getRestCountriesData(testClient, server.URL+APIstring, defaultIsoCode)
 
+		// 3. Assertions
 		if actualErr == nil {
 			t.Fatal("getRestCountriesData() expected an error for malformed JSON but got nil")
 		}
@@ -134,10 +146,9 @@ func TestGetRestCountriesData(t *testing.T) {
 		}
 	})
 
-	// -- Empty JSON Array Response Scenario
+	// === Test Case 4: Empty JSON Array ===
 	t.Run("Empty JSON array response", func(t *testing.T) {
-		isoCode := "no"
-
+		// 1. Setup test server with empty response
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
@@ -145,44 +156,46 @@ func TestGetRestCountriesData(t *testing.T) {
 		}))
 		defer server.Close()
 
+		// 2. Call the function under test
 		testClient := server.Client()
-		_, actualErr := getRestCountriesData(testClient, server.URL+"/v3.1/alpha/", isoCode)
+		_, actualErr := getRestCountriesData(testClient, server.URL+APIstring, defaultIsoCode)
 
+		// 3. Assertions
 		if actualErr == nil {
 			t.Fatal("getRestCountriesData() expected an error for empty JSON array, but got nil")
 		}
-
 		expectedErrorMsg := "apiResponse slice is empty"
 		if !strings.Contains(actualErr.Error(), expectedErrorMsg) {
 			t.Errorf("getRestCountriesData() error message = %q, want error containing %q", actualErr.Error(), expectedErrorMsg)
 		}
 	})
 
-	// -- Network Error Scenario
+	// === Test Case 5: Network Error ===
 	t.Run("Network Error", func(t *testing.T) {
-		isoCode := "no"
-
+		// 1. Setup and immediately close server
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// This handler should never be called during this test case
 			t.Errorf("UNEXPECTED: Network error test server recieved a request: %v", r)
 			w.WriteHeader(http.StatusInternalServerError)
 		}))
-		// Get the URL for testing before closing the server
-		closedServerURL := server.URL + "/v3.1/alpha/"
+		closedServerURL := server.URL + APIstring
 		server.Close()
 
-		// Create a standard http client. Not using server.Client() here as we want a to attempt a network connection
+		// 2. Use a standard client that will attempt connection
 		testClient := &http.Client{}
-		_, actualErr := getRestCountriesData(testClient, closedServerURL, isoCode)
 
+		// 3. Call the function under test
+		_, actualErr := getRestCountriesData(testClient, closedServerURL, defaultIsoCode)
+
+		// 4. Assertions
 		if actualErr == nil {
 			t.Fatalf("getRestCountriesData() expected a network error when connecting to %s, but got nil", closedServerURL)
 		}
-
 		expectedErrorSubstrings := []string{"connection refused", "connect: connection refused"}
 		errorMatched := false
 		errStr := actualErr.Error() // Get the error message string
 
+		// 5. Iterate trough expected errors and compare
 		for _, sub := range expectedErrorSubstrings {
 			if strings.Contains(errStr, sub) {
 				errorMatched = true
@@ -191,7 +204,6 @@ func TestGetRestCountriesData(t *testing.T) {
 		}
 
 		if !errorMatched {
-			// Use t.Errorf for assertion failures.
 			t.Errorf("getRestCountriesData() error = %q, did not contain expected network error substrings (%v)", actualErr, expectedErrorSubstrings)
 		}
 	})
@@ -201,11 +213,9 @@ func TestGetRestCountriesData(t *testing.T) {
 *	Function with tests for getMetroData()
  */
 func TestGetMetroData(t *testing.T) {
-
 	// Define standard inputs used across multiple tests
 	defaultLat := 62
 	defaultLong := 10
-
 	APIstring := "/v1/forecast?latitude=%f&longitude=%f&hourly=temperature_2m,precipitation"
 
 	// === Test Case 1: Success Path ===
@@ -216,6 +226,7 @@ func TestGetMetroData(t *testing.T) {
 		if err != nil {
 			t.Fatalf("TEST SETUP FAILED: Could not read testfile %s: %v", jsonPath, err)
 		}
+
 		// 2. Set up test server
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
@@ -224,7 +235,7 @@ func TestGetMetroData(t *testing.T) {
 		}))
 		defer server.Close()
 
-		// 3. Define the expected response from Metro API (based on mock data)
+		// 3. Define the expected response
 		expectedData := utils.MetroMeanValues{
 			MeanPrecipitation: 0.03,
 			MeanTemperature:   0.86,
@@ -311,11 +322,11 @@ func TestGetMetroData(t *testing.T) {
 		if actualErr == nil {
 			t.Fatalf("getMetroData() expected a network error when connecting to %s, but got nil", closedServerURL)
 		}
-
 		expectedErrorSubstrings := []string{"connection refused", "connect: connection refused"}
 		errorMatched := false
 		errStr := actualErr.Error() // Get the error message string
 
+		// 5. Iterate trough expected errors and compare
 		for _, sub := range expectedErrorSubstrings {
 			if strings.Contains(errStr, sub) {
 				errorMatched = true
@@ -324,7 +335,6 @@ func TestGetMetroData(t *testing.T) {
 		}
 
 		if !errorMatched {
-			// Use t.Errorf for assertion failures.
 			t.Errorf("getMetroData() error = %q, did not contain expected network error substrings (%v)", actualErr, expectedErrorSubstrings)
 		}
 	})

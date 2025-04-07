@@ -70,7 +70,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Gets the data from Currency API if needed
 	if needCurrencyAPI {
-		currencyData, err = getCurrencyData(restCountriesData.Currencies, dashboardConfig.Features.TargetCurrencies)
+		currencyData, err = getCurrencyData(http.DefaultClient, utils.CurrencyAPI, restCountriesData.Currencies, dashboardConfig.Features.TargetCurrencies)
 		if err != nil {
 			log.Printf("Error getting Currency API data: %v", err)
 			http.Error(w, "Error getting currency information", http.StatusInternalServerError)
@@ -193,7 +193,7 @@ func getMetroData(client *http.Client, baseURL string, lat float64, long float64
 	return meanResponse, nil
 }
 
-func getCurrencyData(currencies map[string]interface{}, targetCurrencies []string) (map[string]float64, error) {
+func getCurrencyData(client *http.Client, baseURL string, currencies map[string]interface{}, targetCurrencies []string) (map[string]float64, error) {
 	// Extracts the FIRST currency if there are more than one
 	var currencyISO string
 	for iso := range currencies {
