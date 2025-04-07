@@ -53,7 +53,7 @@ func TestCalculateMean(t *testing.T) {
 func TestGetRestCountriesData(t *testing.T) {
 	// Define standard input(s) used across multiple tests
 	defaultIsoCode := "no"
-	APIstring := "/v3.1/alpha/"
+	APIString := "/v3.1/alpha/"
 
 	// === Test Case 1: Success Path ===
 	t.Run("Success country path for Norway", func(t *testing.T) {
@@ -88,7 +88,7 @@ func TestGetRestCountriesData(t *testing.T) {
 
 		// 4. Call the function under test
 		testClient := server.Client()
-		actualData, actualErr := getRestCountriesData(testClient, server.URL+APIstring, defaultIsoCode)
+		actualData, actualErr := getRestCountriesData(testClient, server.URL+APIString, defaultIsoCode)
 
 		// 5. Assertions
 		if actualErr != nil {
@@ -111,7 +111,7 @@ func TestGetRestCountriesData(t *testing.T) {
 
 		// 2. Call the function under test
 		testClient := server.Client()
-		_, actualErr := getRestCountriesData(testClient, server.URL+APIstring, isoCode)
+		_, actualErr := getRestCountriesData(testClient, server.URL+APIString, isoCode)
 
 		// 3. Assertions
 		if actualErr == nil {
@@ -136,7 +136,7 @@ func TestGetRestCountriesData(t *testing.T) {
 
 		// 2. Call the function under test
 		testClient := server.Client()
-		_, actualErr := getRestCountriesData(testClient, server.URL+APIstring, defaultIsoCode)
+		_, actualErr := getRestCountriesData(testClient, server.URL+APIString, defaultIsoCode)
 
 		// 3. Assertions
 		if actualErr == nil {
@@ -160,7 +160,7 @@ func TestGetRestCountriesData(t *testing.T) {
 
 		// 2. Call the function under test
 		testClient := server.Client()
-		_, actualErr := getRestCountriesData(testClient, server.URL+APIstring, defaultIsoCode)
+		_, actualErr := getRestCountriesData(testClient, server.URL+APIString, defaultIsoCode)
 
 		// 3. Assertions
 		if actualErr == nil {
@@ -180,7 +180,7 @@ func TestGetRestCountriesData(t *testing.T) {
 			t.Errorf("UNEXPECTED: Network error test server recieved a request: %v", r)
 			w.WriteHeader(http.StatusInternalServerError)
 		}))
-		closedServerURL := server.URL + APIstring
+		closedServerURL := server.URL + APIString
 		server.Close()
 
 		// 2. Use a standard client that will attempt connection
@@ -218,7 +218,7 @@ func TestGetMetroData(t *testing.T) {
 	// Define standard inputs used across multiple tests
 	defaultLat := 62
 	defaultLong := 10
-	APIstring := "/v1/forecast?latitude=%f&longitude=%f&hourly=temperature_2m,precipitation"
+	APIString := "/v1/forecast?latitude=%f&longitude=%f&hourly=temperature_2m,precipitation"
 
 	// === Test Case 1: Success Path ===
 	t.Run("Success metro data for Norway", func(t *testing.T) {
@@ -245,7 +245,7 @@ func TestGetMetroData(t *testing.T) {
 
 		// 4. Call the function under test
 		testClient := server.Client()
-		actualData, actualErr := getMetroData(testClient, server.URL+APIstring, float64(defaultLat), float64(defaultLong))
+		actualData, actualErr := getMetroData(testClient, server.URL+APIString, float64(defaultLat), float64(defaultLong))
 
 		// 5. Assertions
 		if actualErr != nil {
@@ -266,7 +266,7 @@ func TestGetMetroData(t *testing.T) {
 
 		// 2. Call the function under test
 		testClient := server.Client()
-		_, actualErr := getMetroData(testClient, server.URL+APIstring, float64(defaultLat), float64(defaultLong))
+		_, actualErr := getMetroData(testClient, server.URL+APIString, float64(defaultLat), float64(defaultLong))
 
 		// 3. Assertions
 		if actualErr == nil {
@@ -291,7 +291,7 @@ func TestGetMetroData(t *testing.T) {
 
 		// 2. Call the function under test
 		testClient := server.Client()
-		_, actualErr := getMetroData(testClient, server.URL+APIstring, float64(defaultLat), float64(defaultLong))
+		_, actualErr := getMetroData(testClient, server.URL+APIString, float64(defaultLat), float64(defaultLong))
 
 		// 3. Assertions
 		if actualErr == nil {
@@ -311,7 +311,7 @@ func TestGetMetroData(t *testing.T) {
 			t.Errorf("UNEXPECTED: Network error test server recieved a request: %v", r)
 			w.WriteHeader(http.StatusInternalServerError)
 		}))
-		closedServerURL := server.URL + APIstring
+		closedServerURL := server.URL + APIString
 		server.Close()
 
 		// 2. Use a standard client that will attempt connection
@@ -338,6 +338,58 @@ func TestGetMetroData(t *testing.T) {
 
 		if !errorMatched {
 			t.Errorf("getMetroData() error = %q, did not contain expected network error substrings (%v)", actualErr, expectedErrorSubstrings)
+		}
+	})
+}
+
+/*
+*	Function with tests for getCurrencyData()
+ */
+func TestGetCurrencyData(t *testing.T) {
+	// Define standard inputs used across multiple tests
+	APIString := "/currency/"
+	defaultInputCurrencies := map[string]interface{}{
+		"NOK": map[string]interface{}{
+			"name":   "Norwegian krone",
+			"symbol": "kr",
+		},
+	}
+	defaultTargetCurrencies := []string{"EUR", "USD", "SEK", "XYZ"}
+
+	// === Test Case 1: Success Path ===
+	t.Run("Success currency data for Norway", func(t *testing.T) {
+		// 1. Setting up tests with mock JSON response.
+		jsonPath := filepath.Join("testdata", "CurrencyNorwaySuccess.json")
+		mockJSONResponse, err := os.ReadFile(jsonPath)
+		if err != nil {
+			t.Fatalf("TEST SETUP FAILED: Could not read testfile %s: %v", jsonPath, err)
+		}
+
+		// 2. Set up test server
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(mockJSONResponse)
+		}))
+		defer server.Close()
+
+		// 3. Define the expected response
+		expectedData := map[string]float64{
+			"EUR": 0.08817,
+			"USD": 0.095174,
+			"SEK": 0.954623,
+		}
+
+		// 4. Call the function under test
+		testClient := server.Client()
+		actualData, actualErr := getCurrencyData(testClient, server.URL+APIString, defaultInputCurrencies, defaultTargetCurrencies)
+
+		// 5. Assertions
+		if actualErr != nil {
+			t.Fatalf("getCurrencyData() returned an unexpected error: %v", actualErr)
+		}
+		if !reflect.DeepEqual(actualData, expectedData) {
+			t.Errorf("getCurrencyData() returned unexpected data.\nGot:\n%#v\nWant:\n%#v", actualData, expectedData)
 		}
 	})
 }

@@ -84,6 +84,9 @@ type MetroResponse struct {
 	} `json:"hourly"`
 }
 
+/*
+*	Struct returned from getMetroData()
+ */
 type MetroMeanValues struct {
 	MeanPrecipitation float64
 	MeanTemperature   float64

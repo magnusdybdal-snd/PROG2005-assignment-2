@@ -205,10 +205,10 @@ func getCurrencyData(client *http.Client, baseURL string, currencies map[string]
 		return nil, fmt.Errorf("error: no currencies found in response")
 	}
 	// url to invoke
-	url := utils.CurrencyAPI + currencyISO
+	url := baseURL + currencyISO
 
 	// Uses http.Get with standard client and does the request
-	resp, err := http.Get(url)
+	resp, err := client.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching currency data from Currency API: %v", err)
 	}
