@@ -196,3 +196,136 @@ func TestGetRestCountriesData(t *testing.T) {
 		}
 	})
 }
+
+/*
+*	Function with tests for getMetroData()
+ */
+func TestGetMetroData(t *testing.T) {
+
+	// Define standard inputs used across multiple tests
+	defaultLat := 62
+	defaultLong := 10
+
+	APIstring := "/v1/forecast?latitude=%f&longitude=%f&hourly=temperature_2m,precipitation"
+
+	// === Test Case 1: Success Path ===
+	t.Run("Success metro data for Norway", func(t *testing.T) {
+		// 1. Setting up tests with mock JSON response.
+		jsonPath := filepath.Join("testdata", "MetroNorwaySuccess.json")
+		mockJSONResponse, err := os.ReadFile(jsonPath)
+		if err != nil {
+			t.Fatalf("TEST SETUP FAILED: Could not read testfile %s: %v", jsonPath, err)
+		}
+		// 2. Set up test server
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(mockJSONResponse)
+		}))
+		defer server.Close()
+
+		// 3. Define the expected response from Metro API (based on mock data)
+		expectedData := utils.MetroMeanValues{
+			MeanPrecipitation: 0.03,
+			MeanTemperature:   0.86,
+		}
+
+		// 4. Call the function under test
+		testClient := server.Client()
+		actualData, actualErr := getMetroData(testClient, server.URL+APIstring, float64(defaultLat), float64(defaultLong))
+
+		// 5. Assertions
+		if actualErr != nil {
+			t.Fatalf("getMetroData() returned an unexpected error: %v", actualErr)
+		}
+		if !reflect.DeepEqual(actualData, expectedData) {
+			t.Errorf("getMetroData() returned unexpected data.\nGot:\n%#v\nWant:\n%#v", actualData, expectedData)
+		}
+	})
+
+	// === Test Case 2: API Returns 404 Status ==
+	t.Run("API returns 404", func(t *testing.T) {
+		// 1. Setup test server to return 404
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		// 2. Call the function under test
+		testClient := server.Client()
+		_, actualErr := getMetroData(testClient, server.URL+APIstring, float64(defaultLat), float64(defaultLong))
+
+		// 3. Assertions
+		if actualErr == nil {
+			t.Fatal("getMetroData() expected an error for 404 status, but got nil")
+		}
+		expectedErrorMsg := fmt.Sprintf("API returned non-200 status code: %d", http.StatusNotFound)
+		if !strings.Contains(actualErr.Error(), expectedErrorMsg) {
+			t.Errorf("getMetroData() error message = %q, want error containing %q", actualErr.Error(), expectedErrorMsg)
+		}
+	})
+
+	// === Test Case 3: Malformed JSON Response ===
+	t.Run("Malformed JSON Response", func(t *testing.T) {
+		// 1. Setup test server to return bad JSON
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application-json")
+			// Invalid JSON
+			_, _ = w.Write([]byte(`{"hourly": {"precipitation": [0.1, 0.2,], "temperature_2m": [-1.0, 0.5}}`))
+		}))
+		defer server.Close()
+
+		// 2. Call the function under test
+		testClient := server.Client()
+		_, actualErr := getMetroData(testClient, server.URL+APIstring, float64(defaultLat), float64(defaultLong))
+
+		// 3. Assertions
+		if actualErr == nil {
+			t.Fatal("getMetroData() expected an error for malformed JSON, but got nil")
+		}
+		expectedErrorMsg := fmt.Sprintf("error when decoding json")
+		if !strings.Contains(actualErr.Error(), expectedErrorMsg) {
+			t.Errorf("getMetroData() error message = %q, want error containing %q", actualErr.Error(), expectedErrorMsg)
+		}
+	})
+
+	// === Test Case 4: Network Error ===
+	t.Run("Network Error", func(t *testing.T) {
+		// 1. Setup and immediately close server
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// This handler should never be called during this test case
+			t.Errorf("UNEXPECTED: Network error test server recieved a request: %v", r)
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		closedServerURL := server.URL + APIstring
+		server.Close()
+
+		// 2. Use a standard client that will attempt connection
+		testClient := &http.Client{}
+
+		// 3. Call the function under test
+		_, actualErr := getMetroData(testClient, closedServerURL, float64(defaultLat), float64(defaultLong))
+
+		// 4. Assertions
+		if actualErr == nil {
+			t.Fatalf("getMetroData() expected a network error when connecting to %s, but got nil", closedServerURL)
+		}
+
+		expectedErrorSubstrings := []string{"connection refused", "connect: connection refused"}
+		errorMatched := false
+		errStr := actualErr.Error() // Get the error message string
+
+		for _, sub := range expectedErrorSubstrings {
+			if strings.Contains(errStr, sub) {
+				errorMatched = true
+				break
+			}
+		}
+
+		if !errorMatched {
+			// Use t.Errorf for assertion failures.
+			t.Errorf("getMetroData() error = %q, did not contain expected network error substrings (%v)", actualErr, expectedErrorSubstrings)
+		}
+	})
+}

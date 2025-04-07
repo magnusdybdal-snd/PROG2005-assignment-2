@@ -60,7 +60,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Gets the data from Metro API if needed
 	if needMetroAPI {
-		metroData, err = getMetroData(http.DefaultClient, float64(restCountriesData.Coordinates[0]), float64(restCountriesData.Coordinates[1]))
+		metroData, err = getMetroData(http.DefaultClient, utils.MetroAPI, float64(restCountriesData.Coordinates[0]), float64(restCountriesData.Coordinates[1]))
 		if err != nil {
 			log.Printf("Error getting MetroAPI data: %v", err)
 			http.Error(w, "Error getting weather information", http.StatusInternalServerError)
@@ -159,13 +159,13 @@ func getRestCountriesData(client *http.Client, baseURL string, IsoCode string) (
 *	This function invokes the Metro API with the parameter latitude and logitude, and returns temperature and precipiation hourly
 *	for a 7 day forecast as a struct with two lists. TODO: calculate mean value and return the mean values as a list??
  */
-func getMetroData(client *http.Client, lat float64, long float64) (utils.MetroMeanValues, error) {
+func getMetroData(client *http.Client, baseURL string, lat float64, long float64) (utils.MetroMeanValues, error) {
 
 	// Url to invoke
-	url := fmt.Sprintf(utils.MetroAPI, lat, long)
+	url := fmt.Sprintf(baseURL, lat, long)
 
 	// Uses http.Get with standard client and does the request
-	resp, err := http.Get(url)
+	resp, err := client.Get(url)
 	if err != nil {
 		return utils.MetroMeanValues{}, fmt.Errorf("error fetching weather data from Metro API: %v", err)
 	}
