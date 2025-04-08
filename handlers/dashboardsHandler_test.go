@@ -297,7 +297,7 @@ func TestGetMetroData(t *testing.T) {
 		if actualErr == nil {
 			t.Fatal("getMetroData() expected an error for malformed JSON, but got nil")
 		}
-		expectedErrorMsg := fmt.Sprintf("error when decoding json")
+		expectedErrorMsg := "error when decoding json"
 		if !strings.Contains(actualErr.Error(), expectedErrorMsg) {
 			t.Errorf("getMetroData() error message = %q, want error containing %q", actualErr.Error(), expectedErrorMsg)
 		}
@@ -365,7 +365,7 @@ func TestGetCurrencyData(t *testing.T) {
 			t.Fatalf("TEST SETUP FAILED: Could not read testfile %s: %v", jsonPath, err)
 		}
 
-		// 2. Set up test server
+		// 2. Set up test server to return mock response
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			w.Header().Set("Content-Type", "application/json")
@@ -390,6 +390,111 @@ func TestGetCurrencyData(t *testing.T) {
 		}
 		if !reflect.DeepEqual(actualData, expectedData) {
 			t.Errorf("getCurrencyData() returned unexpected data.\nGot:\n%#v\nWant:\n%#v", actualData, expectedData)
+		}
+	})
+
+	// === Test Case 2: API Returns 404 Status ==
+	t.Run("API returns 404", func(t *testing.T) {
+		// 1. Setup test server to return 404
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		// 2. Call the function under test
+		testClient := server.Client()
+		_, actualErr := getCurrencyData(testClient, server.URL+APIString, defaultInputCurrencies, defaultTargetCurrencies)
+
+		// 3. Assertions
+		if actualErr == nil {
+			t.Fatal("getCurrencyData() expected an error for 404 status, but got nil")
+		}
+		expectedErrorMsg := fmt.Sprintf("API returned non-200 status code: %d", http.StatusNotFound)
+		if !strings.Contains(actualErr.Error(), expectedErrorMsg) {
+			t.Errorf("getCurrencyData() error message = %q, want error containing %q", actualErr.Error(), expectedErrorMsg)
+		}
+	})
+
+	// === Test Case 3: Malformed JSON Response ===
+	t.Run("Malformed JSON Response", func(t *testing.T) {
+		// 1. Setup test server to return bad JSON
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application-json")
+			// Invalid JSON
+			_, _ = w.Write([]byte(`{"rates": {"USD": 1.23`))
+		}))
+		defer server.Close()
+
+		// 2. Call the function under test
+		testClient := server.Client()
+		_, actualErr := getCurrencyData(testClient, server.URL+APIString, defaultInputCurrencies, defaultTargetCurrencies)
+
+		// 3. Assertions
+		if actualErr == nil {
+			t.Fatal("getCurrencyData() expected an error for malformed JSON, but got nil")
+		}
+		expectedErrorMsg := "error when decoding json"
+		if !strings.Contains(actualErr.Error(), expectedErrorMsg) {
+			t.Errorf("getCurrencyData() error message = %q, want error containing %q", actualErr.Error(), expectedErrorMsg)
+		}
+	})
+
+	// === Test Case 4: Empty Input Currency Map
+
+	t.Run("Empty Input Currency Map", func(t *testing.T) {
+		// 1. Setup specific input for this case
+		inputCurrencies := map[string]interface{}{}
+		// No server needed for this test as it fails before HTTP request
+		// 2. Call the function under test
+		testClient := http.DefaultClient
+		_, actualErr := getCurrencyData(testClient, "http://example.com", inputCurrencies, defaultTargetCurrencies)
+
+		// 3. Assertions
+		if actualErr == nil {
+			t.Fatal("getCurrencyData() expected an error for empty currency map, but got nil")
+		}
+		expectedErrorMsg := "error: no currencies found for country"
+		if !strings.Contains(actualErr.Error(), expectedErrorMsg) {
+			t.Errorf("getCurrencyData() error message = %q, want error containing %q", actualErr.Error(), expectedErrorMsg)
+		}
+	})
+
+	// === Test Case 5: Network Error ===
+	t.Run("Network Error", func(t *testing.T) {
+		// 1. Setup and immediately close server
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// This handler should never be called during this test case
+			t.Errorf("UNEXPECTED: Network error test server recieved a request: %v", r)
+			w.WriteHeader(http.StatusInternalServerError)
+		}))
+		closedServerURL := server.URL + APIString
+		server.Close()
+
+		// 2. Use a standard client that will attempt connection
+		testClient := &http.Client{}
+
+		// 3. Call the function under test
+		_, actualErr := getCurrencyData(testClient, closedServerURL, defaultInputCurrencies, defaultTargetCurrencies)
+
+		// 4. Assertions
+		if actualErr == nil {
+			t.Fatalf("getCurrencyData() expected a network error when connecting to %s, but got nil", closedServerURL)
+		}
+		expectedErrorSubstrings := []string{"connection refused", "connect: connection refused"}
+		errorMatched := false
+		errStr := actualErr.Error() // Get the error message string
+
+		// 5. Iterate trough expected errors and compare
+		for _, sub := range expectedErrorSubstrings {
+			if strings.Contains(errStr, sub) {
+				errorMatched = true
+				break
+			}
+		}
+
+		if !errorMatched {
+			t.Errorf("getCurrencyData() error = %q, did not contain expected network error substrings (%v)", actualErr, expectedErrorSubstrings)
 		}
 	})
 }

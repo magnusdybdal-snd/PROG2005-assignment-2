@@ -200,9 +200,9 @@ func getCurrencyData(client *http.Client, baseURL string, currencies map[string]
 		currencyISO = iso
 		break
 	}
-	// Checks that a currency is found in the response
+	// Checks that a currency is found for the country
 	if currencyISO == "" {
-		return nil, fmt.Errorf("error: no currencies found in response")
+		return nil, fmt.Errorf("error: no currencies found for country")
 	}
 	// url to invoke
 	url := baseURL + currencyISO
