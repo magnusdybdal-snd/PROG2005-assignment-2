@@ -17,7 +17,7 @@ func InitFirestore() error {
 	// Firebase initialisation
 	ctx := context.Background()
 
-	opt := option.WithCredentialsFile("./api-keys/serviceAccountKey.json") // API KEY NEEDS TO BE LOCAL! - and added to .gitignore!
+	opt := option.WithCredentialsFile("/home/olemgl/Documents/Skole/sem4/assignment2/api-keys/serviceAccountKey.json") // API KEY NEEDS TO BE LOCAL! - and added to .gitignore!
 	app, err := firebase.NewApp(ctx, nil, opt)
 	if err != nil {
 		log.Printf("error initializing app: %v", err)

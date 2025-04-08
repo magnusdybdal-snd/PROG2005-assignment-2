@@ -14,6 +14,7 @@ const CurrencyAPI = "http://localhost:8081/currency/"
 
 // collections in firebase
 const WebhooksCollection = "webhooks"
+const WEBHOOKTESTCOLLECTION = "webhook_test"
 const DASHBOARD_COLLECTION = "dashboards"
 
 const INVOKE = "INVOKE"
