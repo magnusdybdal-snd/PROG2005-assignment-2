@@ -122,6 +122,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 		return
 	}
+	invokeWebhook(utils.INVOKE, response.IsoCode, r)
 }
 
 func getRestCountriesData(IsoCode string) (utils.RestCountriesResponse, error) {

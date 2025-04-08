@@ -18,6 +18,7 @@ func main() {
 	http.HandleFunc("/v3.1/alpha/", stubs.StubHandlerCountries)
 	http.HandleFunc("/v1/forecast", stubs.StubHandlerWeather)
 	http.HandleFunc("/currency/", stubs.StubHandlerCurrencies)
+	
 
 	log.Println("Running on port: ", port)
 

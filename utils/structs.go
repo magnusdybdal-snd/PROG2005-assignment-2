@@ -2,6 +2,31 @@ package utils
 
 import "time"
 
+type SendNotification struct {
+	ID      string `json:"id"`
+	Country string `firestore:"country" json:"country"`
+	Event   string `firestore:"event" json:"event"`
+	Time    string `json:"time"`
+}
+type RegisterWebhook struct {
+	Url     string `firestore:"url" json:"url"`
+	Country string `firestore:"country" json:"country"`
+	Event   string `firestore:"event" json:"event"`
+}
+
+// When a get request is made, this is the struct to be returned
+type ReturnWebhook struct {
+	ID      string `json:"id"`
+	Country string `firestore:"country" json:"country"`
+	Event   string `firestore:"event" json:"event"`
+	Url     string `firestore:"url" json:"url"`
+}
+
+// used to return the ID of the webhook
+type WebhookId struct {
+	ID string `json:"id"`
+}
+
 /*
  *	Struct for dashboard configurations
  */
