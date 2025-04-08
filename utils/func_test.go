@@ -16,8 +16,6 @@ import (
 const testCollectionName = "FuncUtil_test"
 
 func TestMain(m *testing.M) {
-	log.Println("Initializing Firestore for utils test...")
-
 	if err := InitFirestore(); err != nil {
 		log.Fatalf("FATAL: TestMain failed to initialize Firestore via utils.InitFirestore: %v", err)
 	}
@@ -25,7 +23,6 @@ func TestMain(m *testing.M) {
 
 	exitCode := m.Run()
 
-	log.Println("Closing Firestore client...")
 	CloseFirestore()
 	log.Println("Firestore client closed.")
 	os.Exit(exitCode)
@@ -152,5 +149,4 @@ func TestGetFirestoreDoc(t *testing.T) {
 			t.Errorf("GetFirestoreDocument[DashboardConfig]() error = %q, want error containing %q", actualErr.Error(), expectedErrorMsg)
 		}
 	})
-
 }
