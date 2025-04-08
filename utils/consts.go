@@ -13,3 +13,4 @@ const MetroAPI = "http://localhost:8081/v1/forecast?latitude=%f&longitude=%f&hou
 const CurrencyAPI = "http://localhost:8081/currency/"
 
 const DASHBOARD_COLLECTION = "dashboards"
+const DASHBOARD_TEST_COLLECTION = "dashboard_test"

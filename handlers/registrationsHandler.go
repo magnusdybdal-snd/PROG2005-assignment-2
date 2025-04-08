@@ -7,6 +7,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"google.golang.org/api/iterator"
@@ -19,7 +20,7 @@ func HandleMessages(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	switch r.Method {
 	case http.MethodGet:
-		displayDocument(w, r, ctx)
+		displayDocument(w, r, ctx, false)
 	case http.MethodPost:
 		registerDashConfig(w, r, ctx)
 	case http.MethodDelete:
@@ -209,21 +210,28 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Cont
 }
 
 /*
-* Reads a string from the body in plain-text and sends it to Firestore to be registered as a document.
+ * Reads a string from the body in plain-text and sends it to Firestore to be registered as a document.
  */
-func displayDocument(w http.ResponseWriter, r *http.Request, ctx context.Context) {
-
+func displayDocument(w http.ResponseWriter, r *http.Request, ctx context.Context, test bool) {
 	var response interface{}
 	log.Println("Received " + r.Method + " request.")
 
-	// Test for embedded message ID
+	collection := utils.DASHBOARD_COLLECTION
 	messageId := r.PathValue("id")
+
+	// Test-flag is true:
+	// -> Change collection to not use production collection
+	// -> make sure messageID is proper value. {ID} is not present
+	if test {
+		collection = utils.DASHBOARD_TEST_COLLECTION
+		messageId = strings.TrimPrefix(r.URL.Path, utils.REGISTRATION_PATH)
+	}
+	log.Println("messageId: ", messageId)
 
 	// ID id provided in URL
 	if messageId != "" {
 
-		// Retrieve specific message based on id (Firestore-generated hash)
-		res := utils.FirestoreClient.Collection(utils.DASHBOARD_COLLECTION).Doc(messageId)
+		res := utils.FirestoreClient.Collection(collection).Doc(messageId)
 
 		// Retrieve reference to document
 		doc, err2 := res.Get(ctx)
@@ -235,7 +243,8 @@ func displayDocument(w http.ResponseWriter, r *http.Request, ctx context.Context
 
 		// Creating instance of stuct to be sent.
 		var documentResponse utils.RegistrationGetResponse
-		documentResponse.Id = messageId // Add document ID to struct.
+		// Add document ID to struct.
+		documentResponse.Id = messageId
 		if err := doc.DataTo(&documentResponse); err != nil {
 			log.Println("Failed to construct struct response")
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -244,7 +253,8 @@ func displayDocument(w http.ResponseWriter, r *http.Request, ctx context.Context
 
 		// No ID in URL: Send all documents.
 	} else {
-		iter := utils.FirestoreClient.Collection(utils.DASHBOARD_COLLECTION).Documents(ctx)
+
+		iter := utils.FirestoreClient.Collection(collection).Documents(ctx)
 
 		// Array used to store multiple documents.
 		var registrations []utils.RegistrationGetResponse

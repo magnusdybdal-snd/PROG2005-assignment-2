@@ -101,6 +101,6 @@ type CurrencyResponse struct {
 * ..using DashboardConfig
  */
 type RegistrationGetResponse struct {
-	Id string
+	Id string `json:"id"`
 	DashboardConfig
 }
