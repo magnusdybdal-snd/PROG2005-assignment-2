@@ -25,11 +25,15 @@ func HandleNotification(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		getWebhooks(w, r, false)
 	default:
-
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
 func registerNewWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
+	if r.URL.Path != utils.NOTIFICATION_PATH {
+		http.Error(w, "This endpoint does not offer any functionality outside of: "+utils.NOTIFICATION_PATH, http.StatusBadRequest)
+		return
+	}
 	//if it is a test, you need to set the client manually
 	//variables will have to be set differently too
 	var collection string
