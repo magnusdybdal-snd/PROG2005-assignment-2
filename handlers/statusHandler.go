@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"google.golang.org/api/iterator"
 )
 
 var startTime time.Time
@@ -53,7 +55,10 @@ func getFireStoreCode() int {
 	iter := client.Collection(utils.WebhooksCollection).Limit(1).Documents(context.Background())
 	defer iter.Stop()
 	_, err := iter.Next()
-	if err != nil {
+	if err == iterator.Done {
+		log.Println("No document in Notifications_DB: ", err)
+		return 404
+	} else if err != nil {
 		log.Println("Error fetching document: ", err)
 		return 500
 	}
