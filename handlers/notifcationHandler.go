@@ -71,13 +71,17 @@ func registerNewWebhook(w http.ResponseWriter, r *http.Request) {
 		ID: id.ID,
 	}
 
-	//preare and send the ID back to user
-	w.Header().Set("content-type", "applications/json")
-	if err := json.NewEncoder(w).Encode(returnId); err != nil {
+	responseJson, err := json.Marshal(returnId)
+	if err != nil {
 		log.Println("Unable to encode the response ID for a webhook registration: ", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+
+	//preare and send the ID back to user
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(responseJson)
 }
 
 func deleteWebhook(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +112,7 @@ func deleteWebhook(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	//write status code and send response
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusNoContent)
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -116,7 +120,7 @@ func getWebhooks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	//get the path
 	webhookID := r.PathValue("id")
-	log.Println(webhookID)
+
 	//end response
 	var response interface{}
 
