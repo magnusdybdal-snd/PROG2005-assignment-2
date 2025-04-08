@@ -6,10 +6,19 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
-func main() {
+var startTime time.Time
 
+// initate start time
+func init() {
+	startTime = time.Now()
+}
+
+func main() {
+	//set time
+	handlers.InitStart(startTime)
 	// Initialize Firestore
 	if err := utils.InitFirestore(); err != nil {
 		log.Fatalf("Error initializing Firestore: %v", err)
@@ -22,6 +31,7 @@ func main() {
 		port = "8080"
 	}
 	http.HandleFunc(utils.ROOT_PATH, handlers.RootPath)
+	http.HandleFunc(utils.STATUS_PATH, handlers.StatusHandler)
 	http.HandleFunc(utils.DASHBOARD_PATH, handlers.HandleGetDashboard)
 	http.HandleFunc(utils.NOTIFICATION_PATH+"{id}", handlers.HandleNotification)
 	http.HandleFunc(utils.NOTIFICATION_PATH, handlers.HandleNotification)

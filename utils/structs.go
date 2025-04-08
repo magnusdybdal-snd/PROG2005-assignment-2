@@ -129,3 +129,13 @@ type RegistrationGetResponse struct {
 	Id string
 	DashboardConfig
 }
+
+type Status struct {
+	Countries_api   int    `json:"countries_api"`
+	Metro_api       int    `json:"metro_api"`
+	Currency_api    int    `json:"currency_api"`
+	Notification_db int    `json:"notification_db"`
+	Webhooks        int    `json:"webhooks"`
+	Version         string `json:"version"`
+	Uptime          int    `json:"uptime"`
+}

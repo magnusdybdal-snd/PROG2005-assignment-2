@@ -21,3 +21,6 @@ const INVOKE = "INVOKE"
 const REGISTER = "REGISTER"
 const CHANGE = "CHANGE"
 const DELETE = "DELETE"
+
+// Version of the API
+const VERSION = "v1"
