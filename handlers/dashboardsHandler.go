@@ -27,7 +27,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Retrieves the dashboard configuration from firestore database
-	dashboardConfig, err := utils.GetDashboardConfig[utils.DashboardConfig](ctx, dashboardId, utils.DASHBOARD_COLLECTION)
+	dashboardConfig, err := utils.GetFirestoreDocument[utils.DashboardConfig](ctx, dashboardId, utils.DASHBOARD_COLLECTION)
 	if err != nil {
 		log.Printf("Error retrieving dashboard config from database: %v", err)
 		http.Error(w, "error retrieving dashboard", http.StatusInternalServerError)
