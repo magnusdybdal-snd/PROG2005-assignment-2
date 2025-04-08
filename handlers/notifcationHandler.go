@@ -30,6 +30,21 @@ func HandleNotification(w http.ResponseWriter, r *http.Request) {
 }
 
 func registerNewWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
+	//if it is a test, you need to set the client manually
+	//variables will have to be set differently too
+	var collection string
+	if isTest {
+		//connect to firebase manually
+		if err := utils.InitFirestore(); err != nil {
+			log.Fatalf("Error initializing Firestore: %v", err)
+		}
+		defer utils.CloseFirestore()
+		//set the collection and client
+		client = utils.FirestoreClient
+		collection = utils.WEBHOOKTESTCOLLECTION
+	} else {
+		collection = utils.WebhooksCollection
+	}
 	ctx := r.Context()
 
 	//struct to be registerd
@@ -59,7 +74,7 @@ func registerNewWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
 	}
 
 	//send the struct to the databse
-	id, _, err := client.Collection(utils.WebhooksCollection).Add(ctx, data)
+	id, _, err := client.Collection(collection).Add(ctx, data)
 	if err != nil {
 		log.Println("Error when adding webhook: " + err.Error())
 		http.Error(w, "Error when adding document", http.StatusBadRequest)
@@ -85,12 +100,32 @@ func registerNewWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
 }
 
 func deleteWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
+	//variables will be set according to the test or not
+	var collection string
+	var webhookID string
+
+	//if it is a test, you need to set the client manually
+	//variables will have to be set differently too
+	if isTest {
+		//does not go trought main, therefore it does not know what {id} is
+		webhookID = strings.TrimPrefix(r.URL.Path, utils.NOTIFICATION_PATH)
+		//connect to firebase manually
+		if err := utils.InitFirestore(); err != nil {
+			log.Fatalf("Error initializing Firestore: %v", err)
+		}
+		defer utils.CloseFirestore()
+		//set the collection and client
+		client = utils.FirestoreClient
+		collection = utils.WEBHOOKTESTCOLLECTION
+	} else {
+		collection = utils.WebhooksCollection
+		webhookID = r.PathValue("id")
+	}
+
 	ctx := r.Context()
-	//get the document ID
-	webhookID := r.PathValue("id")
 
 	//Connect to firebase and get the document
-	docRef := client.Collection(utils.WebhooksCollection).Doc(webhookID)
+	docRef := client.Collection(collection).Doc(webhookID)
 
 	//test if the document can be opend
 	_, err := docRef.Get(ctx)
@@ -117,9 +152,29 @@ func deleteWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
 }
 
 func getWebhooks(w http.ResponseWriter, r *http.Request, isTest bool) {
+	//variables will be set according to the test or not
+	var collection string
+	var webhookID string
+
+	//if it is a test, you need to set the client manually
+	//variables will have to be set differently too
+	if isTest {
+		//not mapped trough main, does not know what {id} is
+		webhookID = strings.TrimPrefix(r.URL.Path, utils.NOTIFICATION_PATH)
+		//connect to firebase manually
+		if err := utils.InitFirestore(); err != nil {
+			log.Fatalf("Error initializing Firestore: %v", err)
+		}
+		defer utils.CloseFirestore()
+		//set the collection and client
+		client = utils.FirestoreClient
+		collection = utils.WEBHOOKTESTCOLLECTION
+	} else {
+		webhookID = r.PathValue("id")
+		collection = utils.WebhooksCollection
+	}
 	ctx := r.Context()
 	//get the path
-	webhookID := r.PathValue("id")
 
 	//end response
 	var response interface{}
@@ -127,7 +182,7 @@ func getWebhooks(w http.ResponseWriter, r *http.Request, isTest bool) {
 	//check if the path is empty
 	if webhookID == "" {
 		var webhooks []utils.ReturnWebhook
-		iter := client.Collection(utils.WebhooksCollection).Documents(ctx)
+		iter := client.Collection(collection).Documents(ctx)
 		defer iter.Stop()
 
 		//loop over the documents
@@ -161,7 +216,7 @@ func getWebhooks(w http.ResponseWriter, r *http.Request, isTest bool) {
 		response = webhooks
 	} else {
 		//start the connection and get the document
-		docRef := client.Collection(utils.WebhooksCollection).Doc(webhookID)
+		docRef := client.Collection(collection).Doc(webhookID)
 		doc, err := docRef.Get(ctx)
 		if err != nil {
 			log.Println("Tried to get a document that does not exist:", err)
