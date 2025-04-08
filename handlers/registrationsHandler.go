@@ -221,7 +221,7 @@ func displayDocument(w http.ResponseWriter, r *http.Request, ctx context.Context
 
 	// Test-flag is true:
 	// -> Change collection to not use production collection
-	// -> make sure messageID is proper value. {ID} is not present
+	// -> Make sure messageID is proper value. {ID} is not present
 	if test {
 		collection = utils.DASHBOARD_TEST_COLLECTION
 		messageId = strings.TrimPrefix(r.URL.Path, utils.REGISTRATION_PATH)

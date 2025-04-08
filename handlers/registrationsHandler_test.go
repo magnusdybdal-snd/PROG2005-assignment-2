@@ -34,14 +34,18 @@ func TestDisplayDocument(t *testing.T) {
 		pathID     string
 		wantStatus int
 		wantBody   string
-		ok         bool // Flag: Should this test return an error (false) or should it pass (true)
 	}{
 		{
 			name:       "Get single document",
 			requestURL: utils.REGISTRATION_PATH + "Qqx0bRWYvE6J3mOhDEMF",
 			pathID:     "/Users/maseilertsen/Documents/04_code-projects/Golang/assignment2/stud/testdata/documents/displayResponse.json", // Absolute path to control-fil.
 			wantStatus: http.StatusOK,
-			ok:         true,
+		},
+		{
+			name:       "Get all document",
+			requestURL: utils.REGISTRATION_PATH,
+			pathID:     "/Users/maseilertsen/Documents/04_code-projects/Golang/assignment2/stud/testdata/documents/allDocuments.json", // Absolute path to control-fil.
+			wantStatus: http.StatusOK,
 		},
 	}
 
@@ -74,7 +78,7 @@ func TestDisplayDocument(t *testing.T) {
 			t.Fatalf("Failed to read expected response file: %v", err)
 		}
 
-		if (tc.wantStatus == http.StatusOK) == tc.ok {
+		if tc.wantStatus == http.StatusOK {
 			var gotJSON, wantJSON interface{}
 			if err := json.Unmarshal(w.Body.Bytes(), &gotJSON); err != nil {
 				t.Fatalf("failed to parse response JSON: %v", err)
