@@ -36,7 +36,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 	dashboardId := r.PathValue("id")
 	if dashboardId == "" {
 		log.Println("Error, dashboard id is required")
-		http.Error(w, "error dashboard id is required.", http.StatusBadRequest)
+		http.Error(w, "Dashboard id is required.", http.StatusBadRequest)
 		return
 	}
 

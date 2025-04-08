@@ -12,7 +12,7 @@ func RootPath(w http.ResponseWriter, r *http.Request) {
 
 	output := "This service provides functionality on these paths: <br>" +
 		"<a href=\"" + utils.REGISTRATION_PATH + "\">" + utils.REGISTRATION_PATH + "<br>" +
-		"<a href=\"" + utils.DASHBOARD_PATH + "\">" + utils.DASHBOARD_PATH + "<br>" +
+		"<a href=\"" + utils.DASHBOARD_PATH + "\">" + utils.DASHBOARD_PATH + "{id}" + "<br>" +
 		"<a href=\"" + utils.NOTIFICATION_PATH + "\">" + utils.NOTIFICATION_PATH + "<br>" +
 		"<a href=\"" + utils.STATUS_PATH + "\">" + utils.STATUS_PATH
 
