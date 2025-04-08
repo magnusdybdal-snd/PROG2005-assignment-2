@@ -88,6 +88,7 @@ func updateDocument(w http.ResponseWriter, r *http.Request, ctx context.Context)
 	// Update the document in Firestore
 	_, err = res.Set(ctx, updatedDoc)
 	if err != nil {
+		invokeWebhook(utils.ACCESS_FAILURE, "", r)
 		log.Println("Error updating document:", err)
 		http.Error(w, "Failed to update document: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -136,6 +137,7 @@ func deleteDocument(w http.ResponseWriter, r *http.Request, ctx context.Context)
 	// Retrieve reference to document.
 	_, err2 := res.Delete(ctx)
 	if err2 != nil {
+		invokeWebhook(utils.ACCESS_FAILURE, "", r)
 		log.Println("Delete request for document " + messageId + " failed.")
 		http.Error(w, "Failed to delete document", http.StatusInternalServerError)
 		return
@@ -184,6 +186,7 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Cont
 
 		id, _, err2 := utils.FirestoreClient.Collection(utils.DASHBOARD_COLLECTION).Add(ctx, s)
 		if err2 != nil {
+			invokeWebhook(utils.ACCESS_FAILURE, "", r)
 			log.Println("Error when adding document:", err2)
 			http.Error(w, "Error when adding document: "+err2.Error(), http.StatusBadRequest)
 			return
@@ -267,6 +270,7 @@ func displayDocument(w http.ResponseWriter, r *http.Request, ctx context.Context
 				break
 			}
 			if err != nil {
+				invokeWebhook(utils.ACCESS_FAILURE, "", r)
 				log.Printf("failed to iterate: %v", err)
 				return
 			}

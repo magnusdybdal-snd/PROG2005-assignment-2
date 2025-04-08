@@ -27,7 +27,7 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 		Countries_api:   200,
 		Metro_api:       200, //this needs more work,
 		Currency_api:    200,
-		Notification_db: getFireStoreCode(),
+		Notification_db: getFireStoreCode(r),
 		Webhooks:        getAmmountWebhooks(r),
 		Version:         utils.VERSION,
 		Uptime:          int(time.Since(startTime).Seconds()),
@@ -50,7 +50,7 @@ func getAmmountWebhooks(r *http.Request) int {
 	return len(webhooks)
 }
 
-func getFireStoreCode() int {
+func getFireStoreCode(r *http.Request) int {
 	client := utils.FirestoreClient
 	iter := client.Collection(utils.WebhooksCollection).Limit(1).Documents(context.Background())
 	defer iter.Stop()
@@ -60,17 +60,20 @@ func getFireStoreCode() int {
 		return 404
 	} else if err != nil {
 		log.Println("Error fetching document: ", err)
+		invokeWebhook(utils.ACCESS_FAILURE, "", r)
 		return 500
+
 	}
 	return 200
 }
 
-func getHttpCode(url string) int {
+func getHttpCode(url string, r *http.Request) int {
 	client := http.Client{}
 	defer client.CloseIdleConnections()
 
 	resp, err := client.Get(url)
 	if err != nil {
+		invokeWebhook(utils.NOTREACHABLE, "", r)
 		log.Println("Unable to get API: "+url+" err: ", err)
 	}
 	defer resp.Body.Close()

@@ -201,6 +201,7 @@ func getWebhooks(w http.ResponseWriter, r *http.Request, isTest bool) {
 
 			//in case of an unforseen error
 			if err != nil {
+				invokeWebhook(utils.ACCESS_FAILURE, "", r)
 				log.Println("Error fetching document from Firebase:", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
@@ -298,7 +299,7 @@ func invokeWebhook(event string, countryIso2 string, r *http.Request) {
 // used to check if the event is correct
 func checkEvent(hook utils.RegisterWebhook) bool {
 	switch hook.Event {
-	case "REGISTER", "CHANGE", "DELETE", "INVOKE":
+	case utils.REGISTER, utils.CHANGE, utils.DELETE, utils.INVOKE, utils.NOTREACHABLE, utils.ACCESS_FAILURE:
 		return false
 	default:
 		return true

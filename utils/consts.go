@@ -21,6 +21,8 @@ const INVOKE = "INVOKE"
 const REGISTER = "REGISTER"
 const CHANGE = "CHANGE"
 const DELETE = "DELETE"
+const NOTREACHABLE = "NOT_REACHABLE"
+const ACCESS_FAILURE = "ACCESS_FAILURE"
 
 // Version of the API
 const VERSION = "v1"
