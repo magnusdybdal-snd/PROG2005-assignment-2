@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"assignment2/utils"
+	"context"
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,45 +13,130 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
+
+func TestMain(m *testing.M) {
+	if err := utils.InitFirestore(); err != nil {
+		log.Fatalf("FATAL: TestMain failed to initialize Firestore via utils.InitFirestore: %v", err)
+	}
+	log.Println("Firestore client initialized for utils tests")
+
+	exitCode := m.Run()
+
+	utils.CloseFirestore()
+	log.Println("Firestore client closed.")
+	os.Exit(exitCode)
+}
 
 // Tests uses t.Run for naming tests and more customizing when running test
 
 /*
-*	Uses test tables to test the function calculateMean(...)
+*	Function with tests for HandleGetDashboard()
  */
-func TestCalculateMean(t *testing.T) {
-	// Defines test cases for calculateMean(...)
-	testCases := []struct {
-		name  string    // Name of the test case
-		input []float64 // Input slice for calculation
-		want  float64   // Expected result
-	}{
-		{name: "Empty Slice", input: []float64{}, want: 0.0},
-		{name: "Single Element", input: []float64{5.5}, want: 5.50},
-		{name: "Multiple Positive Integers", input: []float64{1.0, 2.0, 3.0}, want: 2.00},
-		{name: "Mixed Positive and Negative", input: []float64{-1.0, 1.0, 3.0, 5.0}, want: 2.00},
-		{name: "Needs Rounding Up", input: []float64{1.111, 2.222, 3.333}, want: 2.22},
-		{name: "Needs Rounding Up (midpoint)", input: []float64{1.115, 2.225}, want: 1.67},
-		{name: "Needs Rounding Down", input: []float64{10.0, 20.0, 35.0}, want: 21.67},
-		{name: "Already Two Decimal", input: []float64{1.23, 4.56, 7.89}, want: 4.56},
-		{name: "Zeros", input: []float64{0.0, 0.0, 0.0}, want: 0.00},
-	}
+func TestHandleGetDashboard(t *testing.T) {
+	// === Test Case 1: Success with all features enabled ===
+	t.Run("Success with all features", func(t *testing.T) {
 
-	// Iterates over the test cases in the test table above
-	for _, tc := range testCases {
+		// 1. Define mock data and expected results
+		testID := "test-id-all-features"
+		mockConfig := utils.DashboardConfig{
+			Country: "Testland", IsoCode: "TL",
+			Features: struct {
+				Temperature      bool     "firestore:\"temperature\" json:\"temperature\""
+				Precipitation    bool     "firestore:\"precipitation\" json:\"precipitation\""
+				Capital          bool     "firestore:\"capital\" json:\"capital\""
+				Coordinates      bool     "firestore:\"coordinates\" json:\"coordinates\""
+				Population       bool     "firestore:\"population\" json:\"population\""
+				Area             bool     "firestore:\"area\" json:\"area\""
+				TargetCurrencies []string "firestore:\"targetCurrencies\" json:\"targetCurrencies\""
+			}{
+				Temperature: true, Precipitation: true, Capital: true, Coordinates: true, Population: true,
+				Area: true, TargetCurrencies: []string{"USD", "EUR", "SEK"},
+			},
+		}
+		mockCountriesData := utils.RestCountriesResponse{
+			Capital: []string{"Testville"}, Coordinates: []float64{20.0, 30.0}, Population: 1234567, Area: 10000,
+			Currencies: map[string]interface{}{"TLD": map[string]interface{}{"name": "Test Dollar"}},
+		}
+		mockMetroData := utils.MetroMeanValues{MeanTemperature: 15.5, MeanPrecipitation: 2.3}
+		mockCurrencyData := map[string]float64{"USD": 1.1, "EUR": 0.9, "SEK": 8.3}
 
-		t.Run(tc.name, func(st *testing.T) {
-			got := calculateMean(tc.input) // Run calculation for each testcase
-			if got != tc.want {            // Check if the result matches the expected value
-				t.Errorf("calculateMean(%v) == %v, want %v", tc.input, got, tc.want)
-			}
+		expectedResponse := utils.DashboardResponse{
+			Country: "Testland", IsoCode: "TL",
+			Features: struct {
+				Temperature      float64            "json:\"temperature,omitempty\""
+				Precipitation    float64            "json:\"precipitation,omitempty\""
+				Capital          string             "json:\"capital,omitempty\""
+				Coordinates      map[string]float64 "json:\"coordinates,omitempty\""
+				Population       int                "json:\"population,omitempty\""
+				Area             float64            "json:\"area,omitempty\""
+				TargetCurrencies map[string]float64 "json:\"targetCurrencies,omitempty\""
+			}{
+				Temperature: 15.5, Precipitation: 2.3, Capital: "Testville",
+				Coordinates: map[string]float64{"latitude": 20.0, "longitude": 30.0},
+				Population:  1234567, Area: 10000, TargetCurrencies: map[string]float64{"USD": 1.1, "EUR": 0.9, "SEK": 8.3},
+			},
+		}
+
+		// 2. Setup mocks for the external dependent function calls
+		originalGetConfig := getConficFunc
+		origianlGetCountries := getCountriesFunc
+		originalGetMetro := getMetroFunc
+		origianlGetCurrency := getCurrencyFunc
+		t.Cleanup(func() { // Restores the functions after testing
+			getConficFunc = originalGetConfig
+			getCountriesFunc = origianlGetCountries
+			getMetroFunc = originalGetMetro
+			getCurrencyFunc = origianlGetCurrency
 		})
-	}
+
+		// 3. Seting up the functions to return the mocked responses above
+		getConficFunc = func(ctx context.Context, id string, collection string) (utils.DashboardConfig, error) {
+			return mockConfig, nil
+		}
+		getCountriesFunc = func(client *http.Client, baseURL string, IsoCode string) (utils.RestCountriesResponse, error) {
+			return mockCountriesData, nil
+		}
+		getMetroFunc = func(client *http.Client, baseURL string, lat, long float64) (utils.MetroMeanValues, error) {
+			return mockMetroData, nil
+		}
+		getCurrencyFunc = func(client *http.Client, baseURL string, currencies map[string]interface{}, targetCurrencies []string) (map[string]float64, error) {
+			return mockCurrencyData, nil
+		}
+
+		// 4. Setting up request/recorder
+		req := httptest.NewRequest(http.MethodGet, utils.DASHBOARD_PATH+testID, nil)
+		req.SetPathValue("id", testID)
+		w := httptest.NewRecorder()
+
+		// 5. Execute handler
+		HandleGetDashboard(w, req)
+
+		// 6. Assertions
+		if status := w.Code; status != http.StatusOK {
+			t.Fatalf("handler returned wrong status code: got %v want %v. Body: %s", status, http.StatusOK, w.Body.String())
+		}
+		if ctype := w.Header().Get("Content-Type"); ctype != "application/json" {
+			t.Errorf("handler returned wrong content type: got %qm want %q", ctype, "application/json")
+		}
+
+		var actualResponse utils.DashboardResponse
+		if err := json.NewDecoder(w.Body).Decode(&actualResponse); err != nil {
+			t.Fatalf("Failed to unmarshal response body: %v. Body: %s", err, w.Body.String())
+		}
+		// Zero out time for comparison
+		actualResponse.LastRetrieval = time.Time{}
+		expectedResponse.LastRetrieval = time.Time{}
+
+		if !reflect.DeepEqual(actualResponse, expectedResponse) {
+			t.Errorf("handler returned unexpected body:\nGot:\n%#v\nWant:%#v", actualResponse, expectedResponse)
+		}
+	})
 }
 
 /*
-*	Function with tests for getCountriesData()
+ *	Function with tests for getCountriesData()
  */
 func TestGetRestCountriesData(t *testing.T) {
 	// Define standard input(s) used across multiple tests
@@ -75,7 +163,7 @@ func TestGetRestCountriesData(t *testing.T) {
 		// 3. Define the expected response
 		expectedData := utils.RestCountriesResponse{
 			Capital:     []string{"Oslo"},
-			Coordinates: []int{62, 10},
+			Coordinates: []float64{62.0, 10.0},
 			Population:  5379475,
 			Area:        323802,
 			Currencies: map[string]interface{}{
@@ -497,4 +585,37 @@ func TestGetCurrencyData(t *testing.T) {
 			t.Errorf("getCurrencyData() error = %q, did not contain expected network error substrings (%v)", actualErr, expectedErrorSubstrings)
 		}
 	})
+}
+
+/*
+*	Uses test tables to test the function calculateMean(...)
+ */
+func TestCalculateMean(t *testing.T) {
+	// Defines test cases for calculateMean(...)
+	testCases := []struct {
+		name  string    // Name of the test case
+		input []float64 // Input slice for calculation
+		want  float64   // Expected result
+	}{
+		{name: "Empty Slice", input: []float64{}, want: 0.0},
+		{name: "Single Element", input: []float64{5.5}, want: 5.50},
+		{name: "Multiple Positive Integers", input: []float64{1.0, 2.0, 3.0}, want: 2.00},
+		{name: "Mixed Positive and Negative", input: []float64{-1.0, 1.0, 3.0, 5.0}, want: 2.00},
+		{name: "Needs Rounding Up", input: []float64{1.111, 2.222, 3.333}, want: 2.22},
+		{name: "Needs Rounding Up (midpoint)", input: []float64{1.115, 2.225}, want: 1.67},
+		{name: "Needs Rounding Down", input: []float64{10.0, 20.0, 35.0}, want: 21.67},
+		{name: "Already Two Decimal", input: []float64{1.23, 4.56, 7.89}, want: 4.56},
+		{name: "Zeros", input: []float64{0.0, 0.0, 0.0}, want: 0.00},
+	}
+
+	// Iterates over the test cases in the test table above
+	for _, tc := range testCases {
+
+		t.Run(tc.name, func(st *testing.T) {
+			got := calculateMean(tc.input) // Run calculation for each testcase
+			if got != tc.want {            // Check if the result matches the expected value
+				t.Errorf("calculateMean(%v) == %v, want %v", tc.input, got, tc.want)
+			}
+		})
+	}
 }

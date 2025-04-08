@@ -3,6 +3,7 @@ package handlers
 /*
 *	TODO: 	Add timeouts for API calls
 	TODO:	Consider adding context to http request for proper timeout management
+	TODO: 	Currently calls to dashboards/ and dashboards/ID/something goes to default handler
 */
 
 import (
@@ -15,9 +16,22 @@ import (
 	"time"
 )
 
+var (
+	getConficFunc    = utils.GetFirestoreDocument[utils.DashboardConfig]
+	getCountriesFunc = getRestCountriesData
+	getMetroFunc     = getMetroData
+	getCurrencyFunc  = getCurrencyData
+)
+
 func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
+
+	if r.Method != http.MethodGet {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+
 	// Test for embedded dashboard id
 	dashboardId := r.PathValue("id")
 	if dashboardId == "" {
@@ -27,10 +41,10 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Retrieves the dashboard configuration from firestore database
-	dashboardConfig, err := utils.GetFirestoreDocument[utils.DashboardConfig](ctx, dashboardId, utils.DASHBOARD_COLLECTION)
+	dashboardConfig, err := getConficFunc(ctx, dashboardId, utils.DASHBOARD_COLLECTION)
 	if err != nil {
 		log.Printf("Error retrieving dashboard config from database: %v", err)
-		http.Error(w, "error retrieving dashboard", http.StatusInternalServerError)
+		http.Error(w, "Could not find dashboard "+dashboardId, http.StatusInternalServerError)
 		return
 	}
 
@@ -50,7 +64,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Gets the data from REST Countries if needed
 	if needRestCountriesAPI {
-		restCountriesData, err = getRestCountriesData(http.DefaultClient, utils.RESTCountriesAPI, dashboardConfig.IsoCode)
+		restCountriesData, err = getCountriesFunc(http.DefaultClient, utils.RESTCountriesAPI, dashboardConfig.IsoCode)
 		if err != nil {
 			log.Printf("Error getting RestCountries data: %v", err)
 			http.Error(w, "Error getting country information", http.StatusInternalServerError)
@@ -60,7 +74,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Gets the data from Metro API if needed
 	if needMetroAPI {
-		metroData, err = getMetroData(http.DefaultClient, utils.MetroAPI, float64(restCountriesData.Coordinates[0]), float64(restCountriesData.Coordinates[1]))
+		metroData, err = getMetroFunc(http.DefaultClient, utils.MetroAPI, float64(restCountriesData.Coordinates[0]), float64(restCountriesData.Coordinates[1]))
 		if err != nil {
 			log.Printf("Error getting MetroAPI data: %v", err)
 			http.Error(w, "Error getting weather information", http.StatusInternalServerError)
@@ -70,7 +84,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Gets the data from Currency API if needed
 	if needCurrencyAPI {
-		currencyData, err = getCurrencyData(http.DefaultClient, utils.CurrencyAPI, restCountriesData.Currencies, dashboardConfig.Features.TargetCurrencies)
+		currencyData, err = getCurrencyFunc(http.DefaultClient, utils.CurrencyAPI, restCountriesData.Currencies, dashboardConfig.Features.TargetCurrencies)
 		if err != nil {
 			log.Printf("Error getting Currency API data: %v", err)
 			http.Error(w, "Error getting currency information", http.StatusInternalServerError)

@@ -57,7 +57,7 @@ type DashboardResponse struct {
 		Capital          string             `json:"capital,omitempty"`
 		Coordinates      map[string]float64 `json:"coordinates,omitempty"`
 		Population       int                `json:"population,omitempty"`
-		Area             int                `json:"area,omitempty"`
+		Area             float64            `json:"area,omitempty"`
 		TargetCurrencies map[string]float64 `json:"targetCurrencies,omitempty"`
 	} `json:"features"`
 	LastRetrieval time.Time `json:"lastRetrieval"`
@@ -68,9 +68,9 @@ type DashboardResponse struct {
  */
 type RestCountriesResponse struct {
 	Capital     []string               `json:"capital"`
-	Coordinates []int                  `json:"latlng"`
+	Coordinates []float64              `json:"latlng"`
 	Population  int                    `json:"population"`
-	Area        int                    `json:"area"`
+	Area        float64                `json:"area"`
 	Currencies  map[string]interface{} `json:"currencies"`
 }
 
