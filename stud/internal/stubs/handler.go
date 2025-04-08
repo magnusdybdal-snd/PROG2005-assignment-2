@@ -20,6 +20,9 @@ func ParseFile(filename string) []byte {
 	return file
 }
 
+/*
+Respondes with the payload in termianl for a webhook.
+*/
 func StubHandlerWebhook(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
@@ -32,7 +35,7 @@ func StubHandlerWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		log.Println("Received payload, sending result")
+		log.Println("Received payload, posting request in terminal")
 		log.Println(webhook)
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(webhook); err != nil {
@@ -40,7 +43,6 @@ func StubHandlerWebhook(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
-
 	default:
 		http.Error(w, "Method Not Supported", http.StatusMethodNotAllowed)
 	}

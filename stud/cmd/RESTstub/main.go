@@ -18,11 +18,11 @@ func main() {
 	http.HandleFunc("/v3.1/alpha/", stubs.StubHandlerCountries)
 	http.HandleFunc("/v1/forecast", stubs.StubHandlerWeather)
 	http.HandleFunc("/currency/", stubs.StubHandlerCurrencies)
-	
+	http.HandleFunc("/invoked", stubs.StubHandlerWebhook)
 
 	log.Println("Running on port: ", port)
 
-	err := http.ListenAndServe(":" + port, nil)
+	err := http.ListenAndServe(":"+port, nil)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

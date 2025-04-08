@@ -19,17 +19,17 @@ func HandleNotification(w http.ResponseWriter, r *http.Request) {
 	client = utils.FirestoreClient
 	switch r.Method {
 	case http.MethodPost:
-		registerNewWebhook(w, r)
+		registerNewWebhook(w, r, false)
 	case http.MethodDelete:
-		deleteWebhook(w, r)
+		deleteWebhook(w, r, false)
 	case http.MethodGet:
-		getWebhooks(w, r)
+		getWebhooks(w, r, false)
 	default:
 
 	}
 }
 
-func registerNewWebhook(w http.ResponseWriter, r *http.Request) {
+func registerNewWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
 	ctx := r.Context()
 
 	//struct to be registerd
@@ -79,12 +79,12 @@ func registerNewWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//preare and send the ID back to user
-	w.Header().Set("content-type", "application/json")
+	w.Header().Set("content-type", "applications/json")
 	w.WriteHeader(http.StatusCreated)
 	w.Write(responseJson)
 }
 
-func deleteWebhook(w http.ResponseWriter, r *http.Request) {
+func deleteWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
 	ctx := r.Context()
 	//get the document ID
 	webhookID := r.PathValue("id")
@@ -116,7 +116,7 @@ func deleteWebhook(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func getWebhooks(w http.ResponseWriter, r *http.Request) {
+func getWebhooks(w http.ResponseWriter, r *http.Request, isTest bool) {
 	ctx := r.Context()
 	//get the path
 	webhookID := r.PathValue("id")

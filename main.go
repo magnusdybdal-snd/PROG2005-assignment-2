@@ -16,7 +16,6 @@ func main() {
 	}
 	defer utils.CloseFirestore()
 
-
 	port := os.Getenv("PORT")
 	if port == "" {
 		log.Println("Port has not been set, using default 8080")
@@ -28,7 +27,6 @@ func main() {
 	http.HandleFunc(utils.NOTIFICATION_PATH, handlers.HandleNotification)
 	http.HandleFunc(utils.REGISTRATION_PATH+"{id}", handlers.HandleMessages)
 	http.HandleFunc(utils.REGISTRATION_PATH, handlers.HandleMessages) // for get request without an {id}
-
 
 	log.Println("Starting server on port: " + port + "...")
 	log.Fatal(http.ListenAndServe(":"+port, nil))
