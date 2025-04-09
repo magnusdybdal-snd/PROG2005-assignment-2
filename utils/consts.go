@@ -12,6 +12,7 @@ const RESTCountriesAPI = "http://129.241.150.113:8080/v3.1/v3.1/alpha/"
 const MetroAPI = "https://api.open-meteo.com/v1/forecast?latitude=%.2f&longitude=%.2f&hourly=temperature_2m,precipitation"
 const CurrencyAPI = "http://129.241.150.113:9090/currency/"
 
+
 // collections in firebase
 const WebhooksCollection = "webhooks"
 const WEBHOOKTESTCOLLECTION = "webhook_test"

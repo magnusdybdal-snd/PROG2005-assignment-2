@@ -50,7 +50,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Gets the data from REST Countries if needed
 	if needRestCountriesAPI {
-		restCountriesData, err = getRestCountriesData(dashboardConfig.IsoCode)
+		restCountriesData, err = getRestCountriesData(dashboardConfig.IsoCode, r)
 		if err != nil {
 			log.Printf("Error getting RestCountries data: %v", err)
 			http.Error(w, "Error getting country information", http.StatusInternalServerError)
@@ -60,7 +60,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Gets the data from Metro API if needed
 	if needMetroAPI {
-		metroData, err = getMetroData(float64(restCountriesData.Coordinates[0]), float64(restCountriesData.Coordinates[1]))
+		metroData, err = getMetroData(float64(restCountriesData.Coordinates[0]), float64(restCountriesData.Coordinates[1]), r)
 		if err != nil {
 			log.Printf("Error getting MetroAPI data: %v", err)
 			http.Error(w, "Error getting weather information", http.StatusInternalServerError)
@@ -70,7 +70,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Gets the data from Currency API if needed
 	if needCurrencyAPI {
-		currencyData, err = getCurrencyData(restCountriesData.Currencies, dashboardConfig.Features.TargetCurrencies)
+		currencyData, err = getCurrencyData(restCountriesData.Currencies, dashboardConfig.Features.TargetCurrencies, r)
 		if err != nil {
 			log.Printf("Error getting Currency API data: %v", err)
 			http.Error(w, "Error getting currency information", http.StatusInternalServerError)
@@ -125,7 +125,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 	invokeWebhook(utils.INVOKE, response.IsoCode, r)
 }
 
-func getRestCountriesData(IsoCode string) (utils.RestCountriesResponse, error) {
+func getRestCountriesData(IsoCode string, r *http.Request) (utils.RestCountriesResponse, error) {
 
 	// Url to invoke
 	url := utils.RESTCountriesAPI + IsoCode
@@ -139,6 +139,9 @@ func getRestCountriesData(IsoCode string) (utils.RestCountriesResponse, error) {
 
 	// Check the HTTP status code
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusInternalServerError {
+			invokeWebhook(utils.NOTREACHABLE, "", r)
+		}
 		return utils.RestCountriesResponse{}, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
 	}
 
@@ -160,7 +163,7 @@ func getRestCountriesData(IsoCode string) (utils.RestCountriesResponse, error) {
 *	This function invokes the Metro API with the parameter latitude and logitude, and returns temperature and precipiation hourly
 *	for a 7 day forecast as a struct with two lists. TODO: calculate mean value and return the mean values as a list??
  */
-func getMetroData(lat float64, long float64) (utils.MetroMeanValues, error) {
+func getMetroData(lat float64, long float64, r *http.Request) (utils.MetroMeanValues, error) {
 
 	// Url to invoke
 	url := fmt.Sprintf(utils.MetroAPI, lat, long)
@@ -174,6 +177,9 @@ func getMetroData(lat float64, long float64) (utils.MetroMeanValues, error) {
 
 	// Check the HTTP status code
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusInternalServerError {
+			invokeWebhook(utils.NOTREACHABLE, "", r)
+		}
 		return utils.MetroMeanValues{}, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
 	}
 
@@ -194,7 +200,7 @@ func getMetroData(lat float64, long float64) (utils.MetroMeanValues, error) {
 	return meanResponse, nil
 }
 
-func getCurrencyData(currencies map[string]interface{}, targetCurrencies []string) (map[string]float64, error) {
+func getCurrencyData(currencies map[string]interface{}, targetCurrencies []string, r *http.Request) (map[string]float64, error) {
 	// Extracts the FIRST currency if there are more than one
 	var currencyISO string
 	for iso := range currencies {
@@ -217,6 +223,9 @@ func getCurrencyData(currencies map[string]interface{}, targetCurrencies []strin
 
 	// Check the HTTP status code
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusInternalServerError {
+			invokeWebhook(utils.NOTREACHABLE, "", r)
+		}
 		return nil, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
 	}
 	// Decodes json response into struct.
@@ -247,5 +256,5 @@ func calculateMean(val []float64) float64 {
 		sum += v
 	}
 	mean := sum / float64(len(val))
-	return math.Round(mean * 100) / 100
+	return math.Round(mean*100) / 100
 }
