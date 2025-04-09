@@ -85,7 +85,7 @@ type DashboardResponse struct {
 		Area             float64            `json:"area,omitempty"`
 		TargetCurrencies map[string]float64 `json:"targetCurrencies,omitempty"`
 	} `json:"features"`
-	LastRetrieval time.Time `json:"lastRetrieval"`
+	LastRetrieval string `json:"lastRetrieval"`
 }
 
 /*
