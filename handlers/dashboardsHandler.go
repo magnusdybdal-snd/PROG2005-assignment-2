@@ -21,10 +21,13 @@ import (
 *	These variables are used to swap the actual functions to mocked ones during testing
  */
 var (
-	getConficFunc    = utils.GetFirestoreDocument[utils.DashboardConfig]
-	getCountriesFunc = getRestCountriesData
-	getMetroFunc     = getMetroData
-	getCurrencyFunc  = getCurrencyData
+	getConficFunc             = utils.GetFirestoreDocument[utils.DashboardConfig]
+	getCountriesFunc          = getRestCountriesData
+	getMetroFunc              = getMetroData
+	getCurrencyFunc           = getCurrencyData
+	tryCacheRestCountriesFunc = tryCacheRestCountries
+	tryCacheMetroFunc         = tryCacheMetro
+	tryCacheCurrencyFunc      = tryCacheCurrency
 )
 
 func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +81,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Gets the data from Metro API if needed
 	if needMetroAPI {
-		metroData, err = TryCacheMetro(ctx, http.DefaultClient, utils.MetroAPI, float64(restCountriesData.Coordinates[0]), float64(restCountriesData.Coordinates[1]))
+		metroData, err = tryCacheMetro(ctx, http.DefaultClient, utils.MetroAPI, float64(restCountriesData.Coordinates[0]), float64(restCountriesData.Coordinates[1]))
 		if err != nil {
 			log.Printf("Error getting MetroAPI data: %v", err)
 			http.Error(w, "Error getting weather information", http.StatusInternalServerError)
@@ -88,7 +91,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Gets the data from Currency API if needed
 	if needCurrencyAPI {
-		currencyData, err = TryCacheCurrency(ctx, http.DefaultClient, utils.CurrencyAPI, restCountriesData.Currencies, dashboardConfig.Features.TargetCurrencies)
+		currencyData, err = tryCacheCurrency(ctx, http.DefaultClient, utils.CurrencyAPI, restCountriesData.Currencies, dashboardConfig.Features.TargetCurrencies)
 		if err != nil {
 			log.Printf("Error getting Currency API data: %v", err)
 			http.Error(w, "Error getting currency information", http.StatusInternalServerError)
@@ -142,7 +145,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getRestCountriesData(client *http.Client, baseURL string, IsoCode string) (utils.RestCountriesResponse, error) {
+func getRestCountriesData(ctx context.Context, client *http.Client, baseURL string, IsoCode string) (utils.RestCountriesResponse, error) {
 
 	// Url to invoke
 	url := baseURL + IsoCode
@@ -177,7 +180,7 @@ func getRestCountriesData(client *http.Client, baseURL string, IsoCode string) (
 *	This function invokes the Metro API with the parameter latitude and logitude, and returns temperature and precipiation hourly
 *	for a 7 day forecast as a struct with two lists. TODO: calculate mean value and return the mean values as a list??
  */
-func getMetroData(client *http.Client, baseURL string, lat float64, long float64) (utils.MetroMeanValues, error) {
+func getMetroData(ctx context.Context, client *http.Client, baseURL string, lat float64, long float64) (utils.MetroMeanValues, error) {
 
 	// Url to invoke
 	url := fmt.Sprintf(baseURL, lat, long)
@@ -211,7 +214,7 @@ func getMetroData(client *http.Client, baseURL string, lat float64, long float64
 	return meanResponse, nil
 }
 
-func getCurrencyData(client *http.Client, baseURL string, currencies map[string]interface{}, targetCurrencies []string) (map[string]float64, error) {
+func getCurrencyData(ctx context.Context, client *http.Client, baseURL string, currencies map[string]interface{}, targetCurrencies []string) (map[string]float64, error) {
 	// Extracts the FIRST currency if there are more than one
 	var currencyISO string
 	for iso := range currencies {
@@ -270,7 +273,7 @@ func tryCacheRestCountries(ctx context.Context, client *http.Client, baseURL str
 	}
 
 	// Cache miss or error: Get new data
-	newData, newErr := getCountriesFunc(client, baseURL, IsoCode)
+	newData, newErr := getCountriesFunc(ctx, client, baseURL, IsoCode)
 	if newErr != nil {
 		return utils.RestCountriesResponse{}, newErr
 	}
@@ -288,7 +291,7 @@ func tryCacheRestCountries(ctx context.Context, client *http.Client, baseURL str
 	return newData, nil
 }
 
-func TryCacheMetro(ctx context.Context, client *http.Client, baseURL string, lat float64, long float64) (utils.MetroMeanValues, error) {
+func tryCacheMetro(ctx context.Context, client *http.Client, baseURL string, lat float64, long float64) (utils.MetroMeanValues, error) {
 	cacheKey := fmt.Sprintf("metro_%f_%f", lat, long)
 	docRef := utils.FirestoreClient.Collection(utils.CACHE_COLLECTION).Doc(cacheKey)
 
@@ -305,7 +308,7 @@ func TryCacheMetro(ctx context.Context, client *http.Client, baseURL string, lat
 	}
 
 	// Cache miss or error: Get new data
-	newData, newErr := getMetroFunc(client, baseURL, lat, long)
+	newData, newErr := getMetroFunc(ctx, client, baseURL, lat, long)
 	if newErr != nil {
 		return utils.MetroMeanValues{}, newErr
 	}
@@ -323,7 +326,7 @@ func TryCacheMetro(ctx context.Context, client *http.Client, baseURL string, lat
 	return newData, nil
 }
 
-func TryCacheCurrency(ctx context.Context, client *http.Client, baseURL string, currencies map[string]interface{}, targetCurrencies []string) (map[string]float64, error) {
+func tryCacheCurrency(ctx context.Context, client *http.Client, baseURL string, currencies map[string]interface{}, targetCurrencies []string) (map[string]float64, error) {
 
 	var currencyISO string
 	for iso := range currencies {
@@ -346,7 +349,7 @@ func TryCacheCurrency(ctx context.Context, client *http.Client, baseURL string, 
 	}
 
 	// Cache miss or error: Get new data
-	newData, newErr := getCurrencyFunc(client, baseURL, currencies, targetCurrencies)
+	newData, newErr := getCurrencyFunc(ctx, client, baseURL, currencies, targetCurrencies)
 	if newErr != nil {
 		return nil, newErr
 	}
