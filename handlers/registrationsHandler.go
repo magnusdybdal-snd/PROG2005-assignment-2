@@ -5,15 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"log"
 	"net/http"
 	"time"
 
 	"google.golang.org/api/iterator"
 )
-
-// TODO make content reading roboust! issue #16
 
 /*
 * Handle different types of requests.
@@ -54,10 +51,10 @@ func updateDocument(w http.ResponseWriter, r *http.Request, ctx context.Context)
 		return
 	}
 
-	content, err := io.ReadAll(r.Body) // TODO make read of struct more robust. issue #16
-	if err != nil {
-		log.Println("Reading payload from body failed:", err)
-		http.Error(w, "Reading payload failed.", http.StatusInternalServerError)
+	// Reads body of POST request
+	var config utils.DashboardAlteration
+	content, err := utils.ValidatePostRequest(&config, w, r)
+	if err != nil { // Error handling (messages) handled in function ValidateostRequest.
 		return
 	}
 
@@ -66,8 +63,6 @@ func updateDocument(w http.ResponseWriter, r *http.Request, ctx context.Context)
 		http.Error(w, "Your payload (to be stored as document) appears to be empty. Ensure to terminate URI with /.", http.StatusBadRequest)
 		return
 	}
-
-	log.Println("Request body:", string(content))
 
 	// Create a variable for the existing data
 	var existingData utils.DashboardAlterationTime
@@ -93,10 +88,13 @@ func updateDocument(w http.ResponseWriter, r *http.Request, ctx context.Context)
 	// Update the document in Firestore
 	_, err = res.Set(ctx, updatedDoc)
 	if err != nil {
+		invokeWebhook(utils.ACCESS_FAILURE, "", r)
 		log.Println("Error updating document:", err)
 		http.Error(w, "Failed to update document: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	invokeWebhook(utils.CHANGE, updateData.IsoCode, r)
 
 	// Return the updated document
 	w.Header().Set("Content-Type", "application/json")
@@ -120,20 +118,31 @@ func deleteDocument(w http.ResponseWriter, r *http.Request, ctx context.Context)
 	res := utils.FirestoreClient.Collection(utils.DASHBOARD_COLLECTION).Doc(messageId)
 
 	// Checks if the document exists in database.
-	_, err := res.Get(ctx)
+	doc, err := res.Get(ctx)
 	if err != nil {
 		log.Println("Document ID does not exist. Id: " + messageId)
 		http.Error(w, http.StatusText(http.StatusBadRequest)+": Invalid ID", http.StatusBadRequest)
 		return
 	}
 
+	var documentResponse utils.RegistrationGetResponse
+	documentResponse.Id = messageId // Add document ID to struct.
+	if err := doc.DataTo(&documentResponse); err != nil {
+		log.Println("Failed to construct struct response")
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+
+	invokeWebhook(utils.DELETE, documentResponse.IsoCode, r)
+
 	// Retrieve reference to document.
 	_, err2 := res.Delete(ctx)
 	if err2 != nil {
+		invokeWebhook(utils.ACCESS_FAILURE, "", r)
 		log.Println("Delete request for document " + messageId + " failed.")
 		http.Error(w, "Failed to delete document", http.StatusInternalServerError)
 		return
 	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -151,14 +160,11 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Cont
 	log.Println("Starting registerDashConfig handler")
 	log.Println("Content-Type:", r.Header.Get("Content-Type"))
 
-	content, err := io.ReadAll(r.Body) // TODO read payload and check that it is up to spec. issue #16
-	if err != nil {
-		log.Println("Reading payload from body failed:", err)
-		http.Error(w, "Reading payload failed.", http.StatusInternalServerError)
+	var config utils.DashboardAlteration
+	content, err := utils.ValidatePostRequest(&config, w, r)
+	if err != nil { // Error handling (messages) handled in function ValidateostRequest.
 		return
 	}
-
-	log.Println("Request body:", string(content))
 
 	if len(string(content)) == 0 {
 		log.Println("Content appears to be empty.")
@@ -180,38 +186,38 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Cont
 
 		id, _, err2 := utils.FirestoreClient.Collection(utils.DASHBOARD_COLLECTION).Add(ctx, s)
 		if err2 != nil {
+			invokeWebhook(utils.ACCESS_FAILURE, "", r)
 			log.Println("Error when adding document:", err2)
 			http.Error(w, "Error when adding document: "+err2.Error(), http.StatusBadRequest)
 			return
+		}
 
+		invokeWebhook(utils.REGISTER, s.IsoCode, r)
+
+		log.Println("Document added successfully, creating response")
+		response := struct {
+			ID            string    `json:"id"`
+			LastRetrieval time.Time `json:"lastChange"`
+		}{
+			ID:            id.ID,
+			LastRetrieval: s.LastRetrieval,
+		}
+		responseJSON, err := json.Marshal(response)
+		if err != nil {
+			log.Println("Error creating JSON response:", err)
+			http.Error(w, "Error creating response", http.StatusInternalServerError)
+			return
+		}
+		log.Println("Setting headers and writing response")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+
+		n, err := w.Write(responseJSON) // This sould be fine as long as the json is checked properly ln53.
+		if err != nil {
+			log.Println("Error writing response:", err)
+			return
 		} else {
-			log.Println("Document added successfully, creating response")
-			response := struct {
-				ID            string    `json:"id"`
-				LastRetrieval time.Time `json:"lastChange"`
-			}{
-				ID:            id.ID,
-				LastRetrieval: s.LastRetrieval,
-			}
-
-			responseJSON, err := json.Marshal(response)
-			if err != nil {
-				log.Println("Error creating JSON response:", err)
-				http.Error(w, "Error creating response", http.StatusInternalServerError)
-				return
-			}
-
-			log.Println("Setting headers and writing response")
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
-
-			n, err := w.Write(responseJSON) // This sould be fine as long as the json is checked properly ln53.
-			if err != nil {
-				log.Println("Error writing response:", err)
-				return
-			} else {
-				log.Println("Wrote", n, "bytes successfully")
-			}
+			log.Println("Wrote", n, "bytes successfully")
 		}
 	}
 }
@@ -264,6 +270,7 @@ func displayDocument(w http.ResponseWriter, r *http.Request, ctx context.Context
 				break
 			}
 			if err != nil {
+				invokeWebhook(utils.ACCESS_FAILURE, "", r)
 				log.Printf("failed to iterate: %v", err)
 				return
 			}
