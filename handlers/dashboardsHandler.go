@@ -3,6 +3,7 @@ package handlers
 /*
 *	TODO: 	Add timeouts for API calls
 	TODO:	Consider adding context to http request for proper timeout management
+	TODO: 	Currently calls to dashboards/ and dashboards/ID/something goes to default handler
 */
 
 import (
@@ -15,22 +16,35 @@ import (
 	"time"
 )
 
+var (
+	getConficFunc    = utils.GetFirestoreDocument[utils.DashboardConfig]
+	getCountriesFunc = getRestCountriesData
+	getMetroFunc     = getMetroData
+	getCurrencyFunc  = getCurrencyData
+)
+
 func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
+
+	if r.Method != http.MethodGet {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+
 	// Test for embedded dashboard id
 	dashboardId := r.PathValue("id")
 	if dashboardId == "" {
 		log.Println("Error, dashboard id is required")
-		http.Error(w, "error dashboard id is required.", http.StatusBadRequest)
+		http.Error(w, "Dashboard id is required.", http.StatusBadRequest)
 		return
 	}
 
 	// Retrieves the dashboard configuration from firestore database
-	dashboardConfig, err := utils.GetDashboardConfig[utils.DashboardConfig](ctx, dashboardId, utils.DASHBOARD_COLLECTION)
+	dashboardConfig, err := getConficFunc(ctx, dashboardId, utils.DASHBOARD_COLLECTION)
 	if err != nil {
 		log.Printf("Error retrieving dashboard config from database: %v", err)
-		http.Error(w, "error retrieving dashboard", http.StatusInternalServerError)
+		http.Error(w, "Could not find dashboard "+dashboardId, http.StatusInternalServerError)
 		return
 	}
 
@@ -50,7 +64,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Gets the data from REST Countries if needed
 	if needRestCountriesAPI {
-		restCountriesData, err = getRestCountriesData(dashboardConfig.IsoCode, r)
+		restCountriesData, err = getCountriesFunc(http.DefaultClient, utils.RESTCountriesAPI, dashboardConfig.IsoCode)
 		if err != nil {
 			log.Printf("Error getting RestCountries data: %v", err)
 			http.Error(w, "Error getting country information", http.StatusInternalServerError)
@@ -60,7 +74,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Gets the data from Metro API if needed
 	if needMetroAPI {
-		metroData, err = getMetroData(float64(restCountriesData.Coordinates[0]), float64(restCountriesData.Coordinates[1]), r)
+		metroData, err = getMetroFunc(http.DefaultClient, utils.MetroAPI, float64(restCountriesData.Coordinates[0]), float64(restCountriesData.Coordinates[1]))
 		if err != nil {
 			log.Printf("Error getting MetroAPI data: %v", err)
 			http.Error(w, "Error getting weather information", http.StatusInternalServerError)
@@ -70,7 +84,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Gets the data from Currency API if needed
 	if needCurrencyAPI {
-		currencyData, err = getCurrencyData(restCountriesData.Currencies, dashboardConfig.Features.TargetCurrencies, r)
+		currencyData, err = getCurrencyFunc(http.DefaultClient, utils.CurrencyAPI, restCountriesData.Currencies, dashboardConfig.Features.TargetCurrencies)
 		if err != nil {
 			log.Printf("Error getting Currency API data: %v", err)
 			http.Error(w, "Error getting currency information", http.StatusInternalServerError)
@@ -122,16 +136,15 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 		return
 	}
-	invokeWebhook(utils.INVOKE, response.IsoCode, r)
 }
 
-func getRestCountriesData(IsoCode string, r *http.Request) (utils.RestCountriesResponse, error) {
+func getRestCountriesData(client *http.Client, baseURL string, IsoCode string) (utils.RestCountriesResponse, error) {
 
 	// Url to invoke
-	url := utils.RESTCountriesAPI + IsoCode
+	url := baseURL + IsoCode
 
-	// Uses http.Get to setup standard client and do the request
-	resp, err := http.Get(url)
+	// Uses get with default http client
+	resp, err := client.Get(url)
 	if err != nil {
 		return utils.RestCountriesResponse{}, fmt.Errorf("error fetching country info form REST Countries: %v", err)
 	}
@@ -139,9 +152,6 @@ func getRestCountriesData(IsoCode string, r *http.Request) (utils.RestCountriesR
 
 	// Check the HTTP status code
 	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusInternalServerError {
-			invokeWebhook(utils.NOTREACHABLE, "", r)
-		}
 		return utils.RestCountriesResponse{}, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
 	}
 
@@ -163,13 +173,13 @@ func getRestCountriesData(IsoCode string, r *http.Request) (utils.RestCountriesR
 *	This function invokes the Metro API with the parameter latitude and logitude, and returns temperature and precipiation hourly
 *	for a 7 day forecast as a struct with two lists. TODO: calculate mean value and return the mean values as a list??
  */
-func getMetroData(lat float64, long float64, r *http.Request) (utils.MetroMeanValues, error) {
+func getMetroData(client *http.Client, baseURL string, lat float64, long float64) (utils.MetroMeanValues, error) {
 
 	// Url to invoke
-	url := fmt.Sprintf(utils.MetroAPI, lat, long)
+	url := fmt.Sprintf(baseURL, lat, long)
 
 	// Uses http.Get with standard client and does the request
-	resp, err := http.Get(url)
+	resp, err := client.Get(url)
 	if err != nil {
 		return utils.MetroMeanValues{}, fmt.Errorf("error fetching weather data from Metro API: %v", err)
 	}
@@ -177,9 +187,6 @@ func getMetroData(lat float64, long float64, r *http.Request) (utils.MetroMeanVa
 
 	// Check the HTTP status code
 	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusInternalServerError {
-			invokeWebhook(utils.NOTREACHABLE, "", r)
-		}
 		return utils.MetroMeanValues{}, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
 	}
 
@@ -200,22 +207,22 @@ func getMetroData(lat float64, long float64, r *http.Request) (utils.MetroMeanVa
 	return meanResponse, nil
 }
 
-func getCurrencyData(currencies map[string]interface{}, targetCurrencies []string, r *http.Request) (map[string]float64, error) {
+func getCurrencyData(client *http.Client, baseURL string, currencies map[string]interface{}, targetCurrencies []string) (map[string]float64, error) {
 	// Extracts the FIRST currency if there are more than one
 	var currencyISO string
 	for iso := range currencies {
 		currencyISO = iso
 		break
 	}
-	// Checks that a currency is found in the response
+	// Checks that a currency is found for the country
 	if currencyISO == "" {
-		return nil, fmt.Errorf("error: no currencies found in response")
+		return nil, fmt.Errorf("error: no currencies found for country")
 	}
 	// url to invoke
-	url := utils.CurrencyAPI + currencyISO
+	url := baseURL + currencyISO
 
 	// Uses http.Get with standard client and does the request
-	resp, err := http.Get(url)
+	resp, err := client.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching currency data from Currency API: %v", err)
 	}
@@ -223,9 +230,6 @@ func getCurrencyData(currencies map[string]interface{}, targetCurrencies []strin
 
 	// Check the HTTP status code
 	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusInternalServerError {
-			invokeWebhook(utils.NOTREACHABLE, "", r)
-		}
 		return nil, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
 	}
 	// Decodes json response into struct.

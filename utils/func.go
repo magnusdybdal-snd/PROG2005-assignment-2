@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -48,7 +49,7 @@ func CallUrl(url string, event string, content ReturnWebhook) {
 *	return T - The firestore document that is retrieved
 *	return error - error if document cannot be retrieved
  */
-func GetDashboardConfig[T any](ctx context.Context, docId string, collection string) (T, error) {
+func GetFirestoreDocument[T any](ctx context.Context, docId string, collection string) (T, error) {
 
 	// Initiate zero value of type T
 	var result T
@@ -59,15 +60,15 @@ func GetDashboardConfig[T any](ctx context.Context, docId string, collection str
 	// Fetches the data from the document
 	doc, err := docRef.Get(ctx)
 	if err != nil {
-		log.Println("Failed to get dashboard document %s: %v"+docId, err)
-		return result, err
+		log.Printf("Failed to get firestore document %s: %v", docId, err)
+		return result, fmt.Errorf("Failed to get firestore document %s from %s: %w", docId, collection, err)
 	}
 
 	// Unmarshals the data in the document to struct
 	err2 := doc.DataTo(&result)
 	if err2 != nil {
-		log.Printf("Failed to unmarshal dashboard config: %s: %v", docId, err)
-		return result, err
+		log.Printf("Failed to unmarshal firestore document: %s: %v", docId, err)
+		return result, fmt.Errorf("Failed to unmarshal data for document %s from %s: %w", docId, collection, err2)
 	}
 
 	return result, nil

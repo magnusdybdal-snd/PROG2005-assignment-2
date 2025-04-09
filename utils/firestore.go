@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"log"
+	"os"
 
 	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go"
@@ -17,7 +18,7 @@ func InitFirestore() error {
 	// Firebase initialisation
 	ctx := context.Background()
 
-	opt := option.WithCredentialsFile("/home/olemgl/Documents/Skole/sem4/assignment2/api-keys/serviceAccountKey.json") // API KEY NEEDS TO BE LOCAL! - and added to .gitignore!
+	opt := option.WithCredentialsFile(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 	app, err := firebase.NewApp(ctx, nil, opt)
 	if err != nil {
 		log.Printf("error initializing app: %v", err)

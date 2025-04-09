@@ -32,7 +32,7 @@ func main() {
 	}
 	http.HandleFunc(utils.ROOT_PATH, handlers.RootPath)
 	http.HandleFunc(utils.STATUS_PATH, handlers.StatusHandler)
-	http.HandleFunc(utils.DASHBOARD_PATH, handlers.HandleGetDashboard)
+	http.HandleFunc(utils.DASHBOARD_PATH+"{id}", handlers.HandleGetDashboard)
 	http.HandleFunc(utils.NOTIFICATION_PATH+"{id}", handlers.HandleNotification)
 	http.HandleFunc(utils.NOTIFICATION_PATH, handlers.HandleNotification)
 	http.HandleFunc(utils.REGISTRATION_PATH+"{id}", handlers.HandleMessages)
