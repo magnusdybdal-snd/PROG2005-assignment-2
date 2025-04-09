@@ -142,3 +142,18 @@ type Status struct {
 	Version         string `json:"version"`
 	Uptime          int    `json:"uptime"`
 }
+
+type CachedRestCountries struct {
+	Data      RestCountriesResponse `firestore:"data"`
+	Timestamp time.Time             `firestore:"timestamp"`
+}
+
+type CachedMetro struct {
+	Data      MetroMeanValues `firestore:"data"`
+	Timestamp time.Time       `firestore:"timestamp"`
+}
+
+type CachedCurrency struct {
+	Data      map[string]float64 `firestore:"data"`
+	Timestamp time.Time          `firestore:"timestamp"`
+}

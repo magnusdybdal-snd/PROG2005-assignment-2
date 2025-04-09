@@ -16,6 +16,7 @@ const CurrencyAPI = "http://129.241.150.113:9090/currency/"
 const WebhooksCollection = "webhooks"
 const WEBHOOKTESTCOLLECTION = "webhook_test"
 const DASHBOARD_COLLECTION = "dashboards"
+const CACHE_COLLECTION = "api_cache"
 
 const INVOKE = "INVOKE"
 const REGISTER = "REGISTER"

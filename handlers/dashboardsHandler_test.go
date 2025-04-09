@@ -335,7 +335,7 @@ func TestHandleGetDashboard(t *testing.T) {
 			getConficFunc = originalGetConfig
 			getCountriesFunc = origianlGetCountries
 		})
-
+		// 3. Seting up the functions to return the mocked responses above
 		getConficFunc = func(ctx context.Context, docId, collection string) (utils.DashboardConfig, error) {
 			return mockConfig, nil
 		}
@@ -343,15 +343,15 @@ func TestHandleGetDashboard(t *testing.T) {
 			return utils.RestCountriesResponse{}, errors.New("mock countries API down")
 		}
 
-		// 3. Setting up request/recorder
+		// 4. Setting up request/recorder
 		req := httptest.NewRequest(http.MethodGet, utils.DASHBOARD_PATH+testID, nil)
 		req.SetPathValue("id", testID)
 		w := httptest.NewRecorder()
 
-		// 4. Execute handler
+		// 5. Execute handler
 		HandleGetDashboard(w, req)
 
-		// 5. Assertions
+		// 6. Assertions
 		if status := w.Code; status != http.StatusInternalServerError {
 			t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
 		}
@@ -386,6 +386,7 @@ func TestHandleGetDashboard(t *testing.T) {
 			getMetroFunc = originalGetMetro
 		})
 
+		// 3. Seting up the functions to return the mocked responses above
 		getConficFunc = func(ctx context.Context, docId, collection string) (utils.DashboardConfig, error) {
 			return mockConfig, nil
 		}
@@ -396,15 +397,15 @@ func TestHandleGetDashboard(t *testing.T) {
 			return utils.MetroMeanValues{}, errors.New("mock metro API down")
 		}
 
-		// 3. Setting up request/recorder
+		// 4. Setting up request/recorder
 		req := httptest.NewRequest(http.MethodGet, utils.DASHBOARD_PATH+testID, nil)
 		req.SetPathValue("id", testID)
 		w := httptest.NewRecorder()
 
-		// 4. Execute handler
+		// 5. Execute handler
 		HandleGetDashboard(w, req)
 
-		// 5. Assertions
+		// 6. Assertions
 		if status := w.Code; status != http.StatusInternalServerError {
 			t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
 		}
@@ -439,6 +440,7 @@ func TestHandleGetDashboard(t *testing.T) {
 			getCurrencyFunc = origianlGetCurrency
 		})
 
+		// 3. Seting up the functions to return the mocked responses above
 		getConficFunc = func(ctx context.Context, docId, collection string) (utils.DashboardConfig, error) {
 			return mockConfig, nil
 		}
@@ -449,15 +451,15 @@ func TestHandleGetDashboard(t *testing.T) {
 			return map[string]float64{}, errors.New("mock currency API down")
 		}
 
-		// 3. Setting up request/recorder
+		// 4. Setting up request/recorder
 		req := httptest.NewRequest(http.MethodGet, utils.DASHBOARD_PATH+testID, nil)
 		req.SetPathValue("id", testID)
 		w := httptest.NewRecorder()
 
-		// 4. Execute handler
+		// 5. Execute handler
 		HandleGetDashboard(w, req)
 
-		// 5. Assertions
+		// 6. Assertions
 		if status := w.Code; status != http.StatusInternalServerError {
 			t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
 		}
@@ -466,7 +468,6 @@ func TestHandleGetDashboard(t *testing.T) {
 			t.Errorf("handler returned unexpected body: got %q want substring %q", body, expectedErrorMsg)
 		}
 	})
-
 }
 
 /*
