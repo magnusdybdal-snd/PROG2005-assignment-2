@@ -4,6 +4,7 @@ import (
 	"assignment2/utils"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -22,11 +23,11 @@ func StatusHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not supported, please use "+http.MethodGet, http.StatusMethodNotAllowed)
 		return
 	}
-
+	MetroUrl := fmt.Sprintf(utils.MetroAPI, 52.52, 13.41)
 	status := utils.Status{
-		Countries_api:   200,
-		Metro_api:       200, //this needs more work,
-		Currency_api:    200,
+		Countries_api:   getHttpCode(utils.RESTCountriesAPI+"no", r),
+		Metro_api:       getHttpCode(MetroUrl, r),
+		Currency_api:    getHttpCode(utils.CurrencyAPI+"NOK", r),
 		Notification_db: getFireStoreCode(r),
 		Webhooks:        getAmmountWebhooks(r),
 		Version:         utils.VERSION,
