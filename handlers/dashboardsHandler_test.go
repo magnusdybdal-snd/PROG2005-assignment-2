@@ -133,6 +133,133 @@ func TestHandleGetDashboard(t *testing.T) {
 			t.Errorf("handler returned unexpected body:\nGot:\n%#v\nWant:%#v", actualResponse, expectedResponse)
 		}
 	})
+
+	// === Test Case 2: Success with partial features (Temperature & Precipiation) ===
+	t.Run("Success with temperature and precipiation", func(t *testing.T) {
+		// 1. Define mock data and expected results
+		testID := "test-id-temp-prec"
+		mockConfig := utils.DashboardConfig{
+			Country: "WeatherTemp", IsoCode: "WT",
+			Features: struct {
+				Temperature      bool     "firestore:\"temperature\" json:\"temperature\""
+				Precipitation    bool     "firestore:\"precipitation\" json:\"precipitation\""
+				Capital          bool     "firestore:\"capital\" json:\"capital\""
+				Coordinates      bool     "firestore:\"coordinates\" json:\"coordinates\""
+				Population       bool     "firestore:\"population\" json:\"population\""
+				Area             bool     "firestore:\"area\" json:\"area\""
+				TargetCurrencies []string "firestore:\"targetCurrencies\" json:\"targetCurrencies\""
+			}{
+				Temperature: true, Precipitation: true,
+			},
+		}
+		mockCountriesData := utils.RestCountriesResponse{Coordinates: []float64{62.0, 10.0}}
+		mockMetroData := utils.MetroMeanValues{MeanTemperature: 15.5, MeanPrecipitation: 2.3}
+		expectedResponse := utils.DashboardResponse{
+			Country: "WeatherTemp", IsoCode: "WT",
+			Features: struct {
+				Temperature      float64            "json:\"temperature,omitempty\""
+				Precipitation    float64            "json:\"precipitation,omitempty\""
+				Capital          string             "json:\"capital,omitempty\""
+				Coordinates      map[string]float64 "json:\"coordinates,omitempty\""
+				Population       int                "json:\"population,omitempty\""
+				Area             float64            "json:\"area,omitempty\""
+				TargetCurrencies map[string]float64 "json:\"targetCurrencies,omitempty\""
+			}{
+				Temperature: 15.5, Precipitation: 2.3,
+			},
+		}
+
+		// Flags to check if unnecessary APIs were called
+		countriesCalled := false
+		metroCalled := false
+		currencyCalled := false
+
+		// 2. Setup mocks for the external dependent function calls
+		originalGetConfig := getConficFunc
+		origianlGetCountries := getCountriesFunc
+		originalGetMetro := getMetroFunc
+		origianlGetCurrency := getCurrencyFunc
+		t.Cleanup(func() { // Restores the functions after testing
+			getConficFunc = originalGetConfig
+			getCountriesFunc = origianlGetCountries
+			getMetroFunc = originalGetMetro
+			getCurrencyFunc = origianlGetCurrency
+		})
+
+		// 3. Seting up the functions to return the mocked responses above
+		getConficFunc = func(ctx context.Context, id string, collection string) (utils.DashboardConfig, error) {
+			return mockConfig, nil
+		}
+		getCountriesFunc = func(client *http.Client, baseURL string, IsoCode string) (utils.RestCountriesResponse, error) {
+			countriesCalled = true
+			return mockCountriesData, nil
+		}
+		getMetroFunc = func(client *http.Client, baseURL string, lat, long float64) (utils.MetroMeanValues, error) {
+			metroCalled = true
+			return mockMetroData, nil
+		}
+		getCurrencyFunc = func(client *http.Client, baseURL string, currencies map[string]interface{}, targetCurrencies []string) (map[string]float64, error) {
+			return nil, nil // Should not be called
+		}
+
+		// 4. Setting up request/recorder
+		req := httptest.NewRequest(http.MethodGet, utils.DASHBOARD_PATH+testID, nil)
+		req.SetPathValue("id", testID)
+		w := httptest.NewRecorder()
+
+		// 5. Execute handler
+		HandleGetDashboard(w, req)
+
+		// 6. Assertions
+		if status := w.Code; status != http.StatusOK {
+			t.Fatalf("handler returned wrong status code: got %v want %v. Body: %s", status, http.StatusOK, w.Body.String())
+		}
+
+		if !countriesCalled {
+			t.Error("getRestCountriesData was expected but not called")
+		}
+		if !metroCalled {
+			t.Error("getMetroData was expected but not called")
+		}
+		if currencyCalled {
+			t.Error("getCurrencyData was called unexpectedly")
+		}
+
+		if ctype := w.Header().Get("Content-Type"); ctype != "application/json" {
+			t.Errorf("handler returned wrong content type: got %qm want %q", ctype, "application/json")
+		}
+
+		var actualResponse utils.DashboardResponse
+		if err := json.NewDecoder(w.Body).Decode(&actualResponse); err != nil {
+			t.Fatalf("Failed to unmarshal response body: %v. Body: %s", err, w.Body.String())
+		}
+		// Zero out time for comparison
+		actualResponse.LastRetrieval = time.Time{}
+		expectedResponse.LastRetrieval = time.Time{}
+
+		if !reflect.DeepEqual(actualResponse, expectedResponse) {
+			t.Errorf("handler returned unexpected body:\nGot:\n%#v\nWant:%#v", actualResponse, expectedResponse)
+		}
+	})
+
+	// === Test Case 3: Error: No ID parameter ===
+	t.Run("Error missing ID parameter", func(t *testing.T) {
+		// 1. Setting up request/recorder without the id in path
+		req := httptest.NewRequest(http.MethodGet, utils.DASHBOARD_PATH, nil)
+		w := httptest.NewRecorder()
+
+		// 2. Execute handler
+		HandleGetDashboard(w, req)
+
+		// 3. Assertions
+		if status := w.Code; status != http.StatusBadRequest {
+			t.Errorf("handler returned wrong status code: got %v, want %v", w.Code, http.StatusBadRequest)
+		}
+		expectedMessage := "Dashboard id is required."
+		if body := w.Body.String(); !strings.Contains(body, expectedMessage) {
+			t.Errorf("hanlder returned unexpected body: got %q want substring %q", body, expectedMessage)
+		}
+	})
 }
 
 /*
