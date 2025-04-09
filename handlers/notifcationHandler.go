@@ -30,39 +30,70 @@ func HandleNotification(w http.ResponseWriter, r *http.Request) {
 }
 
 func patchWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
+	//values to be used to talk to firestore
+	var webhookID string
+	var collection string
+	if isTest {
+		webhookID = strings.TrimPrefix(r.URL.Path, utils.NOTIFICATION_PATH)
+		collection = utils.WEBHOOKTESTCOLLECTION
+	} else {
+		webhookID = r.PathValue("id")
+		collection = utils.WebhooksCollection
+	}
+
+	//get context and path value
 	ctx := r.Context()
-	webhookID := r.PathValue("id")
+	webhookID = r.PathValue("id")
 	if webhookID == "" {
 		log.Println("Error, webhook id is required")
 		http.Error(w, "Error webhook id is required.", http.StatusBadRequest)
 		return
 	}
 
+	// Test for embedded webhook id
+	if webhookID == "" {
+		log.Println("Error, webhook id is required")
+		http.Error(w, "Error webhook id is required.", http.StatusBadRequest)
+		return
+	}
+
+	// Reads body of PATCH request
 	var content utils.RegisterWebhook
-	if err := json.NewDecoder(r.Body).Decode(&content); err != nil {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	err := decoder.Decode(&content)
+	if err != nil {
 		log.Println("Error decoding JSON payload: ", err)
-		http.Error(w, "Error decoding JSON payload", http.StatusBadRequest)
+		http.Error(w, "Error in request body", http.StatusBadRequest)
+		return
+	}
+
+	// if all fields are empty, return 400 error
+	if content.Url == "" && content.Country == "" && content.Event == "" {
+		http.Error(w, "Invalid empty json request", http.StatusBadRequest)
+		log.Println("Tried to update empty json request")
 		return
 	}
 
 	var update []firestore.Update
 
+	// Adds the wanted fields to the update list
 	if content.Url != "" {
 		update = append(update, firestore.Update{Path: "url", Value: content.Url})
 	}
-	if content.Country == "" || len(content.Country) > 2 {
+	if content.Country == "" || len(content.Country) == 2 {
 		update = append(update, firestore.Update{Path: "country", Value: strings.ToUpper(content.Country)})
 	}
-	if content.Event != "" && !checkEvent(content) {
+	if !checkEvent(content) {
 		update = append(update, firestore.Update{Path: "event", Value: content.Event})
 	}
 
 	// Update the document in Firestore
-	docRef := utils.FirestoreClient.Collection(utils.WebhooksCollection).Doc(webhookID)
-	_, err := docRef.Update(ctx, update)
+	docRef := utils.FirestoreClient.Collection(collection).Doc(webhookID)
+	_, err = docRef.Update(ctx, update)
 	if err != nil {
 		log.Println("Error updating document: ", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		http.Error(w, "Failed to update document", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

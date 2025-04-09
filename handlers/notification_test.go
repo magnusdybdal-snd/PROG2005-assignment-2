@@ -56,6 +56,31 @@ func TestPostRequest(t *testing.T) {
 	}
 }
 
+func TestPatchRequest(t *testing.T) {
+	// payload to be changed from SE to NO
+	payloadStruct := utils.RegisterWebhook{Url: "", Country: "NO", Event: ""}
+	jsonPayload, err := json.Marshal(payloadStruct)
+	if err != nil {
+		t.Errorf("Error marshalling payload: %v", err)
+	}
+
+	// make request
+	req := httptest.NewRequest(http.MethodPatch, "http://localhost:8080"+utils.NOTIFICATION_PATH+response.ID, bytes.NewBuffer(jsonPayload))
+	// recorder
+	w := httptest.NewRecorder()
+
+	// call function, get result and make sure its closed
+	patchWebhook(w, req, true)
+
+	resp := w.Result()
+	defer resp.Body.Close()
+
+	// function only returns 204 No Content
+	if resp.StatusCode != http.StatusNoContent {
+		t.Errorf("Status code was %v, expected %v", resp.StatusCode, http.StatusNoContent)
+	}
+}
+
 // Test to get the webhook just created
 func TestOneGetRequest(t *testing.T) {
 	// Test the document just created
