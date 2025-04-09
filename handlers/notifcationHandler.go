@@ -24,14 +24,55 @@ func HandleNotification(w http.ResponseWriter, r *http.Request) {
 		deleteWebhook(w, r, false)
 	case http.MethodGet:
 		getWebhooks(w, r, false)
+	case http.MethodPatch:
+		patchWebhook(w, r, false)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
+func patchWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
+	ctx := r.Context()
+	webhookID := r.PathValue("id")
+	if webhookID == "" {
+		log.Println("Error, webhook id is required")
+		http.Error(w, "Error webhook id is required.", http.StatusBadRequest)
+		return
+	}
+
+	var content utils.RegisterWebhook
+	if err := json.NewDecoder(r.Body).Decode(&content); err != nil {
+		log.Println("Error decoding JSON payload: ", err)
+		http.Error(w, "Error decoding JSON payload: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var update []firestore.Update
+
+	if content.Url != "" {
+		update = append(update, firestore.Update{Path: "url", Value: content.Url})
+	}
+	if content.Country == "" || len(content.Country) > 2 {
+		update = append(update, firestore.Update{Path: "country", Value: strings.ToUpper(content.Country)})
+	}
+	if content.Event != "" && !checkEvent(content) {
+		update = append(update, firestore.Update{Path: "event", Value: content.Event})
+	}
+
+	// Update the document in Firestore
+	docRef := utils.FirestoreClient.Collection(utils.WebhooksCollection).Doc(webhookID)
+	_, err := docRef.Update(ctx, update)
+	if err != nil {
+		log.Println("Error updating document: ", err)
+		http.Error(w, "Failed to update document: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func registerNewWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
 	if r.URL.Path != utils.NOTIFICATION_PATH {
-		http.Error(w, "This endpoint does not offer any functionality outside of: "+utils.NOTIFICATION_PATH, http.StatusBadRequest)
+		http.Error(w, "This method does not offer any functionality outside of: "+utils.NOTIFICATION_PATH, http.StatusBadRequest)
 		return
 	}
 	//if it is a test, you need to set the client manually
