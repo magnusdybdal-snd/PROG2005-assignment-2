@@ -1,0 +1,13 @@
+services:
+  api:
+    container_name: firebased
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./api-keys/serviceAccountKey.json:/secrets/serviceAccount.json:ro
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/secrets/serviceAccount.json
+    ports:
+      - "8080:8080"
+
