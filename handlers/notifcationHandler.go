@@ -14,10 +14,7 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-var client *firestore.Client
-
 func HandleNotification(w http.ResponseWriter, r *http.Request) {
-	client = utils.FirestoreClient
 	switch r.Method {
 	case http.MethodPost:
 		registerNewWebhook(w, r, false)
@@ -44,7 +41,7 @@ func patchWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
 	var content utils.RegisterWebhook
 	if err := json.NewDecoder(r.Body).Decode(&content); err != nil {
 		log.Println("Error decoding JSON payload: ", err)
-		http.Error(w, "Error decoding JSON payload: "+err.Error(), http.StatusBadRequest)
+		http.Error(w, "Error decoding JSON payload", http.StatusBadRequest)
 		return
 	}
 
@@ -65,7 +62,7 @@ func patchWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
 	_, err := docRef.Update(ctx, update)
 	if err != nil {
 		log.Println("Error updating document: ", err)
-		http.Error(w, "Failed to update document: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -80,13 +77,6 @@ func registerNewWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
 	//variables will have to be set differently too
 	var collection string
 	if isTest {
-		//connect to firebase manually
-		if err := utils.InitFirestore(); err != nil {
-			log.Fatalf("Error initializing Firestore: %v", err)
-		}
-		defer utils.CloseFirestore()
-		//set the collection and client
-		client = utils.FirestoreClient
 		collection = utils.WEBHOOKTESTCOLLECTION
 	} else {
 		collection = utils.WebhooksCollection
@@ -120,10 +110,10 @@ func registerNewWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
 	}
 
 	//send the struct to the databse
-	id, _, err := client.Collection(collection).Add(ctx, data)
+	id, _, err := utils.FirestoreClient.Collection(collection).Add(ctx, data)
 	if err != nil {
 		log.Println("Error when adding webhook: " + err.Error())
-		http.Error(w, "Error when adding document", http.StatusBadRequest)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -153,15 +143,7 @@ func deleteWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
 	//if it is a test, you need to set the client manually
 	//variables will have to be set differently too
 	if isTest {
-		//does not go trought main, therefore it does not know what {id} is
 		webhookID = strings.TrimPrefix(r.URL.Path, utils.NOTIFICATION_PATH)
-		//connect to firebase manually
-		if err := utils.InitFirestore(); err != nil {
-			log.Fatalf("Error initializing Firestore: %v", err)
-		}
-		defer utils.CloseFirestore()
-		//set the collection and client
-		client = utils.FirestoreClient
 		collection = utils.WEBHOOKTESTCOLLECTION
 	} else {
 		collection = utils.WebhooksCollection
@@ -171,7 +153,7 @@ func deleteWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
 	ctx := r.Context()
 
 	//Connect to firebase and get the document
-	docRef := client.Collection(collection).Doc(webhookID)
+	docRef := utils.FirestoreClient.Collection(collection).Doc(webhookID)
 
 	//test if the document can be opend
 	_, err := docRef.Get(ctx)
@@ -207,13 +189,6 @@ func getWebhooks(w http.ResponseWriter, r *http.Request, isTest bool) {
 	if isTest {
 		//not mapped trough main, does not know what {id} is
 		webhookID = strings.TrimPrefix(r.URL.Path, utils.NOTIFICATION_PATH)
-		//connect to firebase manually
-		if err := utils.InitFirestore(); err != nil {
-			log.Fatalf("Error initializing Firestore: %v", err)
-		}
-		defer utils.CloseFirestore()
-		//set the collection and client
-		client = utils.FirestoreClient
 		collection = utils.WEBHOOKTESTCOLLECTION
 	} else {
 		webhookID = r.PathValue("id")
@@ -228,7 +203,7 @@ func getWebhooks(w http.ResponseWriter, r *http.Request, isTest bool) {
 	//check if the path is empty
 	if webhookID == "" {
 		var webhooks []utils.ReturnWebhook
-		iter := client.Collection(collection).Documents(ctx)
+		iter := utils.FirestoreClient.Collection(collection).Documents(ctx)
 		defer iter.Stop()
 
 		//loop over the documents
@@ -263,7 +238,7 @@ func getWebhooks(w http.ResponseWriter, r *http.Request, isTest bool) {
 		response = webhooks
 	} else {
 		//start the connection and get the document
-		docRef := client.Collection(collection).Doc(webhookID)
+		docRef := utils.FirestoreClient.Collection(collection).Doc(webhookID)
 		doc, err := docRef.Get(ctx)
 		if err != nil {
 			log.Println("Tried to get a document that does not exist:", err)
@@ -295,7 +270,7 @@ func getWebhooks(w http.ResponseWriter, r *http.Request, isTest bool) {
 func retriveWebhooks(ctx context.Context) ([]utils.ReturnWebhook, error) {
 
 	var webhooks []utils.ReturnWebhook
-	iter := client.Collection(utils.WebhooksCollection).Documents(ctx)
+	iter := utils.FirestoreClient.Collection(utils.WebhooksCollection).Documents(ctx)
 	defer iter.Stop()
 
 	//loop over the documents
