@@ -4,6 +4,7 @@ import (
 	"assignment2/utils"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -32,9 +33,35 @@ func TestMain(m *testing.M) {
 // Tests uses t.Run for naming tests and more customizing when running test
 
 /*
-*	Function with tests for HandleGetDashboard()
+*	Function with tests for HandleGetDashboard() For all the tests there is a lot of setup / mocking
+*	that needs to be done to run the tests, look for "Assertions" in the comments to find the testsing
+*	of the actual logic.
+*	Functions are redefined for every test case so that the tests can be ran in paralell with t.Parallel() if
+*	implemented at a later stage
  */
 func TestHandleGetDashboard(t *testing.T) {
+
+	/* 	Features for dashboardConfig and DashboardResponse. Used in mocked config/responses
+	to avoid a lot of boilerplate */
+	type configFeatures struct {
+		Temperature      bool     "firestore:\"temperature\" json:\"temperature\""
+		Precipitation    bool     "firestore:\"precipitation\" json:\"precipitation\""
+		Capital          bool     "firestore:\"capital\" json:\"capital\""
+		Coordinates      bool     "firestore:\"coordinates\" json:\"coordinates\""
+		Population       bool     "firestore:\"population\" json:\"population\""
+		Area             bool     "firestore:\"area\" json:\"area\""
+		TargetCurrencies []string "firestore:\"targetCurrencies\" json:\"targetCurrencies\""
+	}
+
+	type responseFeatures struct {
+		Temperature      float64            "json:\"temperature,omitempty\""
+		Precipitation    float64            "json:\"precipitation,omitempty\""
+		Capital          string             "json:\"capital,omitempty\""
+		Coordinates      map[string]float64 "json:\"coordinates,omitempty\""
+		Population       int                "json:\"population,omitempty\""
+		Area             float64            "json:\"area,omitempty\""
+		TargetCurrencies map[string]float64 "json:\"targetCurrencies,omitempty\""
+	}
 	// === Test Case 1: Success with all features enabled ===
 	t.Run("Success with all features", func(t *testing.T) {
 
@@ -42,40 +69,36 @@ func TestHandleGetDashboard(t *testing.T) {
 		testID := "test-id-all-features"
 		mockConfig := utils.DashboardConfig{
 			Country: "Testland", IsoCode: "TL",
-			Features: struct {
-				Temperature      bool     "firestore:\"temperature\" json:\"temperature\""
-				Precipitation    bool     "firestore:\"precipitation\" json:\"precipitation\""
-				Capital          bool     "firestore:\"capital\" json:\"capital\""
-				Coordinates      bool     "firestore:\"coordinates\" json:\"coordinates\""
-				Population       bool     "firestore:\"population\" json:\"population\""
-				Area             bool     "firestore:\"area\" json:\"area\""
-				TargetCurrencies []string "firestore:\"targetCurrencies\" json:\"targetCurrencies\""
-			}{
-				Temperature: true, Precipitation: true, Capital: true, Coordinates: true, Population: true,
-				Area: true, TargetCurrencies: []string{"USD", "EUR", "SEK"},
+			Features: configFeatures{
+				Temperature:      true,
+				Precipitation:    true,
+				Capital:          true,
+				Coordinates:      true,
+				Population:       true,
+				Area:             true,
+				TargetCurrencies: []string{"USD", "EUR", "SEK"},
 			},
 		}
 		mockCountriesData := utils.RestCountriesResponse{
-			Capital: []string{"Testville"}, Coordinates: []float64{20.0, 30.0}, Population: 1234567, Area: 10000,
-			Currencies: map[string]interface{}{"TLD": map[string]interface{}{"name": "Test Dollar"}},
+			Capital:     []string{"Testville"},
+			Coordinates: []float64{20.0, 30.0},
+			Population:  1234567,
+			Area:        10000,
+			Currencies:  map[string]interface{}{"TLD": map[string]interface{}{"name": "Test Dollar"}},
 		}
 		mockMetroData := utils.MetroMeanValues{MeanTemperature: 15.5, MeanPrecipitation: 2.3}
 		mockCurrencyData := map[string]float64{"USD": 1.1, "EUR": 0.9, "SEK": 8.3}
 
 		expectedResponse := utils.DashboardResponse{
 			Country: "Testland", IsoCode: "TL",
-			Features: struct {
-				Temperature      float64            "json:\"temperature,omitempty\""
-				Precipitation    float64            "json:\"precipitation,omitempty\""
-				Capital          string             "json:\"capital,omitempty\""
-				Coordinates      map[string]float64 "json:\"coordinates,omitempty\""
-				Population       int                "json:\"population,omitempty\""
-				Area             float64            "json:\"area,omitempty\""
-				TargetCurrencies map[string]float64 "json:\"targetCurrencies,omitempty\""
-			}{
-				Temperature: 15.5, Precipitation: 2.3, Capital: "Testville",
-				Coordinates: map[string]float64{"latitude": 20.0, "longitude": 30.0},
-				Population:  1234567, Area: 10000, TargetCurrencies: map[string]float64{"USD": 1.1, "EUR": 0.9, "SEK": 8.3},
+			Features: responseFeatures{
+				Temperature:      15.5,
+				Precipitation:    2.3,
+				Capital:          "Testville",
+				Coordinates:      map[string]float64{"latitude": 20.0, "longitude": 30.0},
+				Population:       1234567,
+				Area:             10000,
+				TargetCurrencies: map[string]float64{"USD": 1.1, "EUR": 0.9, "SEK": 8.3},
 			},
 		}
 
@@ -140,32 +163,23 @@ func TestHandleGetDashboard(t *testing.T) {
 		testID := "test-id-temp-prec"
 		mockConfig := utils.DashboardConfig{
 			Country: "WeatherTemp", IsoCode: "WT",
-			Features: struct {
-				Temperature      bool     "firestore:\"temperature\" json:\"temperature\""
-				Precipitation    bool     "firestore:\"precipitation\" json:\"precipitation\""
-				Capital          bool     "firestore:\"capital\" json:\"capital\""
-				Coordinates      bool     "firestore:\"coordinates\" json:\"coordinates\""
-				Population       bool     "firestore:\"population\" json:\"population\""
-				Area             bool     "firestore:\"area\" json:\"area\""
-				TargetCurrencies []string "firestore:\"targetCurrencies\" json:\"targetCurrencies\""
-			}{
+			Features: configFeatures{
 				Temperature: true, Precipitation: true,
 			},
 		}
-		mockCountriesData := utils.RestCountriesResponse{Coordinates: []float64{62.0, 10.0}}
-		mockMetroData := utils.MetroMeanValues{MeanTemperature: 15.5, MeanPrecipitation: 2.3}
+		mockCountriesData := utils.RestCountriesResponse{
+			Coordinates: []float64{62.0, 10.0},
+		}
+		mockMetroData := utils.MetroMeanValues{
+			MeanTemperature:   15.5,
+			MeanPrecipitation: 2.3,
+		}
 		expectedResponse := utils.DashboardResponse{
-			Country: "WeatherTemp", IsoCode: "WT",
-			Features: struct {
-				Temperature      float64            "json:\"temperature,omitempty\""
-				Precipitation    float64            "json:\"precipitation,omitempty\""
-				Capital          string             "json:\"capital,omitempty\""
-				Coordinates      map[string]float64 "json:\"coordinates,omitempty\""
-				Population       int                "json:\"population,omitempty\""
-				Area             float64            "json:\"area,omitempty\""
-				TargetCurrencies map[string]float64 "json:\"targetCurrencies,omitempty\""
-			}{
-				Temperature: 15.5, Precipitation: 2.3,
+			Country: "WeatherTemp",
+			IsoCode: "WT",
+			Features: responseFeatures{
+				Temperature:   15.5,
+				Precipitation: 2.3,
 			},
 		}
 
@@ -215,6 +229,7 @@ func TestHandleGetDashboard(t *testing.T) {
 			t.Fatalf("handler returned wrong status code: got %v want %v. Body: %s", status, http.StatusOK, w.Body.String())
 		}
 
+		// Tests handlers logic in calling external APIs
 		if !countriesCalled {
 			t.Error("getRestCountriesData was expected but not called")
 		}
@@ -253,13 +268,205 @@ func TestHandleGetDashboard(t *testing.T) {
 
 		// 3. Assertions
 		if status := w.Code; status != http.StatusBadRequest {
-			t.Errorf("handler returned wrong status code: got %v, want %v", w.Code, http.StatusBadRequest)
+			t.Errorf("handler returned wrong status code: got %v, want %v", status, http.StatusBadRequest)
 		}
 		expectedMessage := "Dashboard id is required."
 		if body := w.Body.String(); !strings.Contains(body, expectedMessage) {
 			t.Errorf("hanlder returned unexpected body: got %q want substring %q", body, expectedMessage)
 		}
 	})
+
+	// === Test Case 4: Error - GetFirestoreDocument Fails ===
+	t.Run("Error database fetch fails", func(t *testing.T) {
+		testID := "test-id-db-fail"
+
+		// 1. Define mock data
+		originalGetConfig := getConficFunc
+		t.Cleanup(func() {
+			getConficFunc = originalGetConfig
+		})
+		// 2. Set the function to just return an empty document and an error
+		getConficFunc = func(ctx context.Context, docId string, collection string) (utils.DashboardConfig, error) {
+			return utils.DashboardConfig{}, errors.New("mock db connection failed")
+		}
+
+		// 3. Setting up request/recorder
+		req := httptest.NewRequest(http.MethodGet, utils.DASHBOARD_PATH+testID, nil)
+		req.SetPathValue("id", testID)
+		w := httptest.NewRecorder()
+
+		// 4. Execute handler
+		HandleGetDashboard(w, req)
+
+		// 5. Assertions
+		if status := w.Code; status != http.StatusInternalServerError {
+			t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
+		}
+
+		expectedMessage := fmt.Sprintf("Could not find dashboard %s", testID)
+		if body := w.Body.String(); !strings.Contains(body, expectedMessage) {
+			t.Errorf("handler returned unexpected body: got %q want substring %q", body, expectedMessage)
+		}
+	})
+
+	// === Test Case 5: Error - getCountriesData fails ===
+	t.Run("Error getCountriesData fails", func(t *testing.T) {
+		testID := "test-id-country-fail"
+
+		// 1. Define mock data
+		mockConfig := utils.DashboardConfig{
+			Country: "Failland", IsoCode: "FL", Features: struct {
+				Temperature      bool     "firestore:\"temperature\" json:\"temperature\""
+				Precipitation    bool     "firestore:\"precipitation\" json:\"precipitation\""
+				Capital          bool     "firestore:\"capital\" json:\"capital\""
+				Coordinates      bool     "firestore:\"coordinates\" json:\"coordinates\""
+				Population       bool     "firestore:\"population\" json:\"population\""
+				Area             bool     "firestore:\"area\" json:\"area\""
+				TargetCurrencies []string "firestore:\"targetCurrencies\" json:\"targetCurrencies\""
+			}{
+				Capital: true,
+			},
+		}
+
+		// 2. Setup mocks for the external dependent function calls
+		originalGetConfig := getConficFunc
+		origianlGetCountries := getCountriesFunc
+		t.Cleanup(func() {
+			getConficFunc = originalGetConfig
+			getCountriesFunc = origianlGetCountries
+		})
+
+		getConficFunc = func(ctx context.Context, docId, collection string) (utils.DashboardConfig, error) {
+			return mockConfig, nil
+		}
+		getCountriesFunc = func(client *http.Client, baseURL string, IsoCode string) (utils.RestCountriesResponse, error) {
+			return utils.RestCountriesResponse{}, errors.New("mock countries API down")
+		}
+
+		// 3. Setting up request/recorder
+		req := httptest.NewRequest(http.MethodGet, utils.DASHBOARD_PATH+testID, nil)
+		req.SetPathValue("id", testID)
+		w := httptest.NewRecorder()
+
+		// 4. Execute handler
+		HandleGetDashboard(w, req)
+
+		// 5. Assertions
+		if status := w.Code; status != http.StatusInternalServerError {
+			t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
+		}
+		expectedErrorMsg := "Error getting country information"
+		if body := w.Body.String(); !strings.Contains(body, expectedErrorMsg) {
+			t.Errorf("handler returned unexpected body: got %q want substring %q", body, expectedErrorMsg)
+		}
+	})
+
+	// === Test Case 6: Error - getMetroData fails ===
+	t.Run("Error getMetroData fails", func(t *testing.T) {
+		testID := "test-id-metro-fail"
+
+		// 1. Define mock data
+		mockConfig := utils.DashboardConfig{
+			Country: "Failland", IsoCode: "FL",
+			Features: configFeatures{
+				Temperature: true,
+			},
+		}
+		// Need countries data to use getMetroData
+		mockCountriesData := utils.RestCountriesResponse{
+			Coordinates: []float64{20.0, 30.0},
+		}
+		// 2. Setup mocks for the external dependent function calls
+		originalGetConfig := getConficFunc
+		origianlGetCountries := getCountriesFunc
+		originalGetMetro := getMetroFunc
+		t.Cleanup(func() {
+			getConficFunc = originalGetConfig
+			getCountriesFunc = origianlGetCountries
+			getMetroFunc = originalGetMetro
+		})
+
+		getConficFunc = func(ctx context.Context, docId, collection string) (utils.DashboardConfig, error) {
+			return mockConfig, nil
+		}
+		getCountriesFunc = func(client *http.Client, baseURL string, IsoCode string) (utils.RestCountriesResponse, error) {
+			return mockCountriesData, nil
+		}
+		getMetroFunc = func(client *http.Client, baseURL string, lat, long float64) (utils.MetroMeanValues, error) {
+			return utils.MetroMeanValues{}, errors.New("mock metro API down")
+		}
+
+		// 3. Setting up request/recorder
+		req := httptest.NewRequest(http.MethodGet, utils.DASHBOARD_PATH+testID, nil)
+		req.SetPathValue("id", testID)
+		w := httptest.NewRecorder()
+
+		// 4. Execute handler
+		HandleGetDashboard(w, req)
+
+		// 5. Assertions
+		if status := w.Code; status != http.StatusInternalServerError {
+			t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
+		}
+		expectedErrorMsg := "Error getting weather information"
+		if body := w.Body.String(); !strings.Contains(body, expectedErrorMsg) {
+			t.Errorf("handler returned unexpected body: got %q want substring %q", body, expectedErrorMsg)
+		}
+	})
+
+	// === Test Case 7: Error - getCurrencyData fails ===
+	t.Run("Error getCurrecyData fails", func(t *testing.T) {
+		testID := "test-id-currency-fail"
+
+		// 1. Define mock data
+		mockConfig := utils.DashboardConfig{
+			Country: "Failland", IsoCode: "FL",
+			Features: configFeatures{
+				TargetCurrencies: []string{"USD", "EUR"},
+			},
+		}
+		// Need countries data to use getCurrencyData
+		mockCountriesData := utils.RestCountriesResponse{
+			Currencies: map[string]interface{}{"TES": map[string]interface{}{"name": "Test Currency"}},
+		}
+		// 2. Setup mocks for the external dependent function calls
+		originalGetConfig := getConficFunc
+		origianlGetCountries := getCountriesFunc
+		origianlGetCurrency := getCurrencyFunc
+		t.Cleanup(func() {
+			getConficFunc = originalGetConfig
+			getCountriesFunc = origianlGetCountries
+			getCurrencyFunc = origianlGetCurrency
+		})
+
+		getConficFunc = func(ctx context.Context, docId, collection string) (utils.DashboardConfig, error) {
+			return mockConfig, nil
+		}
+		getCountriesFunc = func(client *http.Client, baseURL string, IsoCode string) (utils.RestCountriesResponse, error) {
+			return mockCountriesData, nil
+		}
+		getCurrencyFunc = func(client *http.Client, baseURL string, currencies map[string]interface{}, targetCurrencies []string) (map[string]float64, error) {
+			return map[string]float64{}, errors.New("mock currency API down")
+		}
+
+		// 3. Setting up request/recorder
+		req := httptest.NewRequest(http.MethodGet, utils.DASHBOARD_PATH+testID, nil)
+		req.SetPathValue("id", testID)
+		w := httptest.NewRecorder()
+
+		// 4. Execute handler
+		HandleGetDashboard(w, req)
+
+		// 5. Assertions
+		if status := w.Code; status != http.StatusInternalServerError {
+			t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
+		}
+		expectedErrorMsg := "Error getting currency information"
+		if body := w.Body.String(); !strings.Contains(body, expectedErrorMsg) {
+			t.Errorf("handler returned unexpected body: got %q want substring %q", body, expectedErrorMsg)
+		}
+	})
+
 }
 
 /*
@@ -419,7 +626,6 @@ func TestGetRestCountriesData(t *testing.T) {
 				break
 			}
 		}
-
 		if !errorMatched {
 			t.Errorf("getRestCountriesData() error = %q, did not contain expected network error substrings (%v)", actualErr, expectedErrorSubstrings)
 		}
