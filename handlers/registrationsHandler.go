@@ -209,7 +209,7 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Cont
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 
-		n, err := w.Write(responseJSON) // This sould be fine as long as the json is checked properly ln53.
+		n, err := w.Write(responseJSON) // This sould be fine as long as the json is checked properly.
 		if err != nil {
 			log.Println("Error writing response:", err)
 			return

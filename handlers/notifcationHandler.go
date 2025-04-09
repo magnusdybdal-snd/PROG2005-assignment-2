@@ -325,6 +325,7 @@ func retriveWebhooks(ctx context.Context) ([]utils.ReturnWebhook, error) {
 
 func invokeWebhook(event string, countryIso2 string, ctx context.Context) {
 	webhooks, err := retriveWebhooks(ctx)
+	log.Println("invokeWebhook invoked, event: ", event)
 	if err != nil {
 		log.Println("Error in retrieving webhooks ", err)
 		return
