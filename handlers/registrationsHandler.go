@@ -116,9 +116,23 @@ func deleteDocument(w http.ResponseWriter, r *http.Request, ctx context.Context,
 
 	// Extract id from URL.
 	messageId := r.PathValue("id")
+	log.Printf("--- deleteDocument: ID extracted via PathValue: %q ---", messageId) // Log extracted ID
 
+	collection := utils.DASHBOARD_COLLECTION
+	// Alternative variables used for testing.
+	if test {
+		collection = utils.DASHBOARD_TEST_COLLECTION
+	}
+	log.Printf("--- deleteDocument: Using collection: %s ---", collection)
+
+	// Check if ID is empty *after* extraction
+	if messageId == "" {
+		log.Println("--- deleteDocument: Extracted messageId is empty! ---")
+		http.Error(w, http.StatusText(http.StatusBadRequest)+": Missing or invalid ID in URL path", http.StatusBadRequest)
+		return
+	}
 	// Retrieve specific message based on id (Firestore-generated hash)
-	res := utils.FirestoreClient.Collection(utils.DASHBOARD_COLLECTION).Doc(messageId)
+	res := utils.FirestoreClient.Collection(collection).Doc(messageId)
 
 	// Checks if the document exists in database.
 	_, err := res.Get(ctx)

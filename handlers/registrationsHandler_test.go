@@ -4,6 +4,7 @@ import (
 	"assignment2/utils"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -12,6 +13,10 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestUpdateDocument(t *testing.T) {
@@ -19,14 +24,106 @@ func TestUpdateDocument(t *testing.T) {
 }
 func TestDeleteDocument(t *testing.T) {
 
-}
-
-func TestRegisterDashConfig(t *testing.T) {
-	// --- Test Setup ---
-	// Disable log output during tests
 	originalOutput := log.Writer()
 	log.SetOutput(io.Discard)
 	defer log.SetOutput(originalOutput)
+
+	// Initialize Firestore - This should connect to your TEST environment/emulator
+	if err := utils.InitFirestore(); err != nil {
+		log.Fatalf("Error initializing Firestore for test: %v", err)
+	}
+	defer utils.CloseFirestore()
+
+	// Test cases
+	testCases := []struct {
+		name           string
+		requestURL     string // Request URL, used to get id of document.
+		wantStatusCode int    // Wanted staus.
+		createTestDoc  bool   // Should a test document be created?
+		docNotFound    bool   // Does document stil exist?
+	}{
+		{
+			name:           "Sucsessful delete",
+			requestURL:     utils.REGISTRATION_PATH,
+			wantStatusCode: http.StatusNoContent,
+			createTestDoc:  true,
+			docNotFound:    true,
+		},
+	}
+	testDocID := fmt.Sprintf("delete-me-%d", time.Now().UnixNano())
+	collection := utils.DASHBOARD_TEST_COLLECTION
+	docRef := utils.FirestoreClient.Collection(collection).Doc(testDocID)
+
+	// Default test document-body
+	testDocData := map[string]interface{}{
+		"country": "Test Success",
+		"isoCode": "TS",
+		"features": map[string]interface{}{
+			"temperature":      true,
+			"precipitation":    true,
+			"capital":          false,
+			"coordinates":      true,
+			"population":       false,
+			"area":             true,
+			"targetCurrencies": []string{"NOK"},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			// Create a context
+			ctx := context.Background()
+
+			// TODO nice comment here
+			_, err := docRef.Set(ctx, testDocData)
+			if err != nil {
+				// Stop the test immediately if setup fails
+				t.Fatalf("SETUP: Failed to create test document %s: %v", testDocID, err)
+			}
+
+			// Create request.
+			r := httptest.NewRequest(http.MethodDelete, tc.requestURL, nil)
+
+			// Set pathvalue if calling handler directly
+			r.SetPathValue("id", testDocID)
+
+			// Create response recorder.
+			w := httptest.NewRecorder()
+
+			// Create new document (to be deleted)
+			//if tc.createTestDoc {
+			//	registerDashConfig(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, tc.requestURL, strings.NewReader(testDocBody)), context.Background(), false)
+			//}
+
+			// Delete document
+			deleteDocument(w, r, ctx, true) // Pass test=true
+			// Check that document is deleted.
+			// -- use get request and check status of what heppens if its not found.
+			if w.Code != tc.wantStatusCode {
+				t.Errorf("Handler response code: want %d, got %d. Body %s", tc.wantStatusCode, w.Code, w.Body.String())
+			}
+
+			// Attempt to request deleted document
+			_, err = docRef.Get(ctx)
+
+			if err == nil {
+				t.Errorf("Forestore check FAILED: Document %s was found, but it should have been deleted.", testDocID)
+			} else {
+				// An error occurred, check if it's the specific 'NotFound' error
+				if status.Code(err) == codes.NotFound {
+					// This is the success case! The document is gone.
+					t.Logf("Firestore check PASSED: Document %s successfully verified as deleted (NotFound).", testDocID)
+				} else {
+					// An unexpected error occurred while trying to Get the document
+					t.Errorf("Firestore check FAILED: Error verifying deletion for doc %s, but it wasn't NotFound: %v", testDocID, err)
+				}
+			}
+
+		})
+	}
+}
+
+func TestRegisterDashConfig(t *testing.T) {
 
 	// Initialize Firestore - This should connect to your TEST environment/emulator
 	if err := utils.InitFirestore(); err != nil {
