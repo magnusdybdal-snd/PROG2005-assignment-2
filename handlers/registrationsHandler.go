@@ -88,13 +88,12 @@ func updateDocument(w http.ResponseWriter, r *http.Request, ctx context.Context)
 	// Update the document in Firestore
 	_, err = res.Set(ctx, updatedDoc)
 	if err != nil {
-		invokeWebhook(utils.ACCESS_FAILURE, "", r)
 		log.Println("Error updating document:", err)
 		http.Error(w, "Failed to update document: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	invokeWebhook(utils.CHANGE, updateData.IsoCode, r)
+	invokeWebhook(utils.CHANGE, updateData.IsoCode, ctx)
 
 	// Return the updated document
 	w.Header().Set("Content-Type", "application/json")
@@ -132,12 +131,11 @@ func deleteDocument(w http.ResponseWriter, r *http.Request, ctx context.Context)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
-	invokeWebhook(utils.DELETE, documentResponse.IsoCode, r)
+	invokeWebhook(utils.DELETE, documentResponse.IsoCode, ctx)
 
 	// Retrieve reference to document.
 	_, err2 := res.Delete(ctx)
 	if err2 != nil {
-		invokeWebhook(utils.ACCESS_FAILURE, "", r)
 		log.Println("Delete request for document " + messageId + " failed.")
 		http.Error(w, "Failed to delete document", http.StatusInternalServerError)
 		return
@@ -186,13 +184,12 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Cont
 
 		id, _, err2 := utils.FirestoreClient.Collection(utils.DASHBOARD_COLLECTION).Add(ctx, s)
 		if err2 != nil {
-			invokeWebhook(utils.ACCESS_FAILURE, "", r)
 			log.Println("Error when adding document:", err2)
 			http.Error(w, "Error when adding document: "+err2.Error(), http.StatusBadRequest)
 			return
 		}
 
-		invokeWebhook(utils.REGISTER, s.IsoCode, r)
+		invokeWebhook(utils.REGISTER, s.IsoCode, ctx)
 
 		log.Println("Document added successfully, creating response")
 		response := struct {
@@ -270,7 +267,6 @@ func displayDocument(w http.ResponseWriter, r *http.Request, ctx context.Context
 				break
 			}
 			if err != nil {
-				invokeWebhook(utils.ACCESS_FAILURE, "", r)
 				log.Printf("failed to iterate: %v", err)
 				return
 			}

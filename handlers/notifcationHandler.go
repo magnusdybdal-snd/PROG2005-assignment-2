@@ -4,6 +4,7 @@ package handlers
 
 import (
 	"assignment2/utils"
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -241,8 +242,8 @@ func getWebhooks(w http.ResponseWriter, r *http.Request, isTest bool) {
 			}
 
 			//in case of an unforseen error
+			//no point in sending a response to the webhooks if you cannot get the data
 			if err != nil {
-				invokeWebhook(utils.ACCESS_FAILURE, "", r)
 				log.Println("Error fetching document from Firebase:", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
@@ -291,8 +292,7 @@ func getWebhooks(w http.ResponseWriter, r *http.Request, isTest bool) {
 	}
 }
 
-func retriveWebhooks(r *http.Request) ([]utils.ReturnWebhook, error) {
-	ctx := r.Context()
+func retriveWebhooks(ctx context.Context) ([]utils.ReturnWebhook, error) {
 
 	var webhooks []utils.ReturnWebhook
 	iter := client.Collection(utils.WebhooksCollection).Documents(ctx)
@@ -323,8 +323,8 @@ func retriveWebhooks(r *http.Request) ([]utils.ReturnWebhook, error) {
 	return webhooks, nil
 }
 
-func invokeWebhook(event string, countryIso2 string, r *http.Request) {
-	webhooks, err := retriveWebhooks(r)
+func invokeWebhook(event string, countryIso2 string, ctx context.Context) {
+	webhooks, err := retriveWebhooks(ctx)
 	if err != nil {
 		log.Println("Error in retrieving webhooks ", err)
 		return
@@ -340,7 +340,7 @@ func invokeWebhook(event string, countryIso2 string, r *http.Request) {
 // used to check if the event is correct
 func checkEvent(hook utils.RegisterWebhook) bool {
 	switch hook.Event {
-	case utils.REGISTER, utils.CHANGE, utils.DELETE, utils.INVOKE, utils.NOTREACHABLE, utils.ACCESS_FAILURE:
+	case utils.REGISTER, utils.CHANGE, utils.DELETE, utils.INVOKE, utils.NOTREACHABLE:
 		return false
 	default:
 		return true

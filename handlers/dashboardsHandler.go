@@ -159,6 +159,9 @@ func getRestCountriesData(ctx context.Context, client *http.Client, baseURL stri
 
 	// Check the HTTP status code
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusInternalServerError {
+			invokeWebhook(utils.NOTREACHABLE, "", ctx)
+		}
 		return utils.RestCountriesResponse{}, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
 	}
 
@@ -194,6 +197,9 @@ func getMetroData(ctx context.Context, client *http.Client, baseURL string, lat 
 
 	// Check the HTTP status code
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusInternalServerError {
+			invokeWebhook(utils.NOTREACHABLE, "", ctx)
+		}
 		return utils.MetroMeanValues{}, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
 	}
 
@@ -237,6 +243,9 @@ func getCurrencyData(ctx context.Context, client *http.Client, baseURL string, c
 
 	// Check the HTTP status code
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusInternalServerError {
+			invokeWebhook(utils.NOTREACHABLE, "", ctx)
+		}
 		return nil, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
 	}
 	// Decodes json response into struct.
