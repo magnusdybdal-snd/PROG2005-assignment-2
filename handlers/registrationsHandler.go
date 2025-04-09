@@ -22,11 +22,11 @@ func HandleMessages(w http.ResponseWriter, r *http.Request) {
 	case http.MethodGet:
 		displayDocument(w, r, ctx, false)
 	case http.MethodPost:
-		registerDashConfig(w, r, ctx)
+		registerDashConfig(w, r, ctx, false)
 	case http.MethodDelete:
-		deleteDocument(w, r, ctx)
+		deleteDocument(w, r, ctx, false)
 	case http.MethodPut:
-		updateDocument(w, r, ctx)
+		updateDocument(w, r, ctx, false)
 	default:
 		log.Println("Unsupported method " + r.Method)
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
@@ -37,12 +37,17 @@ func HandleMessages(w http.ResponseWriter, r *http.Request) {
 /*
 * Updates a specific dashboard-configuration, based on ID in URL.
  */
-func updateDocument(w http.ResponseWriter, r *http.Request, ctx context.Context) {
+func updateDocument(w http.ResponseWriter, r *http.Request, ctx context.Context, test bool) {
 	log.Println("Received " + r.Method + " request.")
 	messageId := r.PathValue("id")
 
+	collection := utils.DASHBOARD_COLLECTION
+	if test {
+		collection = utils.DASHBOARD_TEST_COLLECTION
+	}
+
 	// Retrieve specific message based on id (Firestore-generated hash)
-	res := utils.FirestoreClient.Collection(utils.DASHBOARD_COLLECTION).Doc(messageId)
+	res := utils.FirestoreClient.Collection(collection).Doc(messageId)
 
 	// Checks if the document exists in database.
 	doc, err := res.Get(ctx)
@@ -54,8 +59,8 @@ func updateDocument(w http.ResponseWriter, r *http.Request, ctx context.Context)
 
 	// Reads body of POST request
 	var config utils.DashboardAlteration
-	content, err := utils.ValidatePostRequest(&config, w, r)
-	if err != nil { // Error handling (messages) handled in function ValidateostRequest.
+	content, err := utils.ValidatePostRequest(&config, w, r, false) // test-flag is false in production
+	if err != nil {                                                 // Error handling (messages) handled in function ValidateostRequest.
 		return
 	}
 
@@ -106,7 +111,7 @@ func updateDocument(w http.ResponseWriter, r *http.Request, ctx context.Context)
 /*
 * Deletes documents using {"id"} in DELETE request.
  */
-func deleteDocument(w http.ResponseWriter, r *http.Request, ctx context.Context) {
+func deleteDocument(w http.ResponseWriter, r *http.Request, ctx context.Context, test bool) {
 	log.Println("Received " + r.Method + " request.")
 
 	// Extract id from URL.
@@ -136,20 +141,40 @@ func deleteDocument(w http.ResponseWriter, r *http.Request, ctx context.Context)
 /*
 * Registers Dashboard configuratuins in firestore.
  */
-func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Context) {
+func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Context, test bool) {
 	// Initial client error handling
 	if utils.FirestoreClient == nil {
 		log.Println("ERROR: Firestore client is nil - not initialized")
 		http.Error(w, "Server configuration error", http.StatusInternalServerError)
 		return
 	}
+	collection := utils.DASHBOARD_COLLECTION
+	if test {
+		// Make sure you have a constant like this defined in utils package
+		collection = utils.DASHBOARD_TEST_COLLECTION
+
+	}
 
 	log.Println("Starting registerDashConfig handler")
 	log.Println("Content-Type:", r.Header.Get("Content-Type"))
 
 	var config utils.DashboardAlteration
-	content, err := utils.ValidatePostRequest(&config, w, r)
+	content, err := utils.ValidatePostRequest(&config, w, r, false)
 	if err != nil { // Error handling (messages) handled in function ValidateostRequest.
+		return
+	}
+
+	if err := json.Unmarshal(content, &config); err != nil {
+		// This shouldn't happen if ValidatePostRequest passed, but good defense
+		log.Println("Error unmarshalling validated content:", err)
+		http.Error(w, "Internal server error during validation", http.StatusInternalServerError)
+		return
+	}
+
+	// Check if essential fields are missing (adjust as needed)
+	if config.Country == "" || config.IsoCode == "" { // Example: Check Country and IsoCode
+		log.Printf("Input JSON passed validation but required fields missing: %+v", config)
+		http.Error(w, "Missing required fields (e.g., country, isoCode)", http.StatusBadRequest)
 		return
 	}
 
@@ -171,7 +196,7 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Cont
 
 		s.LastRetrieval = time.Now() // update timestamp
 
-		id, _, err2 := utils.FirestoreClient.Collection(utils.DASHBOARD_COLLECTION).Add(ctx, s)
+		id, _, err2 := utils.FirestoreClient.Collection(collection).Add(ctx, s)
 		if err2 != nil {
 			log.Println("Error when adding document:", err2)
 			http.Error(w, "Error when adding document: "+err2.Error(), http.StatusBadRequest)
