@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -20,11 +19,6 @@ import (
 )
 
 func TestUpdateDocument(t *testing.T) {
-	// Initialize Firestore
-	if err := utils.InitFirestore(); err != nil {
-		log.Fatalf("Error initializing Firestore for test: %v", err)
-	}
-	defer utils.CloseFirestore()
 
 	// Test cases
 	testCases := []struct {
@@ -137,7 +131,6 @@ func TestUpdateDocument(t *testing.T) {
 			// If mock document is created, make sure it is deleted.
 			if !tc.createTestDoc {
 				t.Cleanup(func() {
-					t.Logf("CLEANUP: Attempting to delete document %s", testDocID)
 					// Use a background context, as the original test context might be done.
 					cleanupCtx := context.Background()
 					_, delErr := docRef.Delete(cleanupCtx)
@@ -145,8 +138,6 @@ func TestUpdateDocument(t *testing.T) {
 					// Log errors during cleanup, but ignore 'NotFound' as that's okay.
 					if delErr != nil && status.Code(delErr) != codes.NotFound {
 						t.Logf("CLEANUP WARN: Failed to delete test document %s: %v", testDocID, delErr)
-					} else {
-						t.Logf("CLEANUP: Successfully deleted or confirmed absence of document %s", testDocID)
 					}
 				})
 			}
@@ -154,12 +145,6 @@ func TestUpdateDocument(t *testing.T) {
 	}
 }
 func TestDeleteDocument(t *testing.T) {
-	// Initialize Firestore
-	if err := utils.InitFirestore(); err != nil {
-		log.Fatalf("Error initializing Firestore for test: %v", err)
-	}
-	defer utils.CloseFirestore()
-
 	// Test cases
 	testCases := []struct {
 		name             string
@@ -232,7 +217,6 @@ func TestDeleteDocument(t *testing.T) {
 					currentDocRef = utils.FirestoreClient.Collection(collection).Doc(currentTestID)
 				}
 			}
-			t.Logf("Running test case %q with target ID: %q", tc.name, currentTestID)
 
 			// Create document if required (bool)
 			if tc.setupDoc {
@@ -241,18 +225,14 @@ func TestDeleteDocument(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Failed to create test document %s: %v", currentTestID, err)
 				}
-				t.Logf("Created document %s", currentTestID)
 
 				// Add Cleanup specific to this test run's document
 				// Use the correct currentDocRef for cleanup
 				t.Cleanup(func() {
-					t.Logf("CLEANUP: Attempting to delete document %s", currentTestID)
 					cleanupCtx := context.Background()
 					_, delErr := currentDocRef.Delete(cleanupCtx)
 					if delErr != nil && status.Code(delErr) != codes.NotFound {
 						t.Logf("CLEANUP WARN: Failed to delete test document %s: %v", currentTestID, delErr)
-					} else {
-						t.Logf("CLEANUP: Successfully deleted or confirmed absence of document %s", currentTestID)
 					}
 				})
 			} else if tc.name == "Delete non-existent document" {
@@ -300,25 +280,14 @@ func TestDeleteDocument(t *testing.T) {
 					// Expecting document to exist
 					if err != nil {
 						t.Errorf("Firestore check FAILED: Document %s was not found, but expected it to exist. Error: %v", currentTestID, err)
-					} else {
-						t.Logf("Firestore check PASSED: Document %s correctly found.", currentTestID)
 					}
 				}
-			} else {
-				t.Logf("Skipping Firestore check because target ID was empty for this test case.")
 			}
 		}) // End t.Run
 	} // End for loop
 } // End TestDeleteDocument
 
 func TestRegisterDashConfig(t *testing.T) {
-
-	// Initialize Firestore - This should connect to your TEST environment/emulator
-	if err := utils.InitFirestore(); err != nil {
-		log.Fatalf("Error initializing Firestore for test: %v", err)
-	}
-	defer utils.CloseFirestore()
-
 	// Test Cases
 	testCases := []struct {
 		name             string
@@ -505,12 +474,6 @@ func TestDisplayDocument(t *testing.T) {
 		},
 	}
 
-	// Initialize Firestore
-	if err := utils.InitFirestore(); err != nil {
-		log.Fatalf("Error initializing Firestore: %v", err)
-	}
-	defer utils.CloseFirestore()
-
 	// Run all test-scenarios
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) { // Use t.Run for better sub-test naming
@@ -549,9 +512,6 @@ func TestDisplayDocument(t *testing.T) {
 				if err := json.Unmarshal(expected, &wantJSON); err != nil {
 					t.Fatalf("failed to parse expected JSON from file '%s': %v", tc.pathID, err)
 				}
-
-				log.Printf("Test %s: got JSON: %v", tc.name, gotJSON) // Use log.Printf with test name
-				log.Printf("Test %s: want JSON: %v", tc.name, wantJSON)
 
 				if !reflect.DeepEqual(gotJSON, wantJSON) {
 					// Consider using a diff library here for better output on complex JSON mismatches

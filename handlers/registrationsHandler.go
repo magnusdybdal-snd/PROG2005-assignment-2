@@ -178,7 +178,6 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Cont
 	if test {
 		// Make sure you have a constant like this defined in utils package
 		collection = utils.DASHBOARD_TEST_COLLECTION
-
 	}
 
 	log.Println("Starting registerDashConfig handler")
@@ -218,8 +217,6 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Cont
 			return
 		}
 
-		log.Println("Unmarshalled successfully, adding to Firestore")
-
 		s.LastRetrieval = time.Now() // update timestamp
 
 		id, _, err2 := utils.FirestoreClient.Collection(collection).Add(ctx, s)
@@ -249,12 +246,10 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Cont
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 
-		n, err := w.Write(responseJSON) // This sould be fine as long as the json is checked properly.
+		_, err = w.Write(responseJSON) // This sould be fine as long as the json is checked properly.
 		if err != nil {
 			log.Println("Error writing response:", err)
 			return
-		} else {
-			log.Println("Wrote", n, "bytes successfully")
 		}
 	}
 }
@@ -264,7 +259,6 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Cont
  */
 func displayDocument(w http.ResponseWriter, r *http.Request, ctx context.Context, test bool) {
 	var response interface{}
-	log.Println("Received " + r.Method + " request.")
 
 	collection := utils.DASHBOARD_COLLECTION
 	messageId := r.PathValue("id")
@@ -276,7 +270,6 @@ func displayDocument(w http.ResponseWriter, r *http.Request, ctx context.Context
 		collection = utils.DASHBOARD_TEST_COLLECTION
 		messageId = strings.TrimPrefix(r.URL.Path, utils.REGISTRATION_PATH)
 	}
-	log.Println("messageId: ", messageId)
 
 	// ID id provided in URL
 	if messageId != "" {
