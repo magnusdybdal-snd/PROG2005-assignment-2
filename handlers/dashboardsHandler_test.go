@@ -688,7 +688,7 @@ func TestGetRestCountriesData(t *testing.T) {
 
 		// 4. Call the function under test
 		testClient := server.Client()
-		actualData, actualErr := getRestCountriesData(nil, testClient, server.URL+APIString, defaultIsoCode)
+		actualData, actualErr := getRestCountriesData(context.Background(), testClient, server.URL+APIString, defaultIsoCode)
 
 		// 5. Assertions
 		if actualErr != nil {
@@ -711,7 +711,7 @@ func TestGetRestCountriesData(t *testing.T) {
 
 		// 2. Call the function under test
 		testClient := server.Client()
-		_, actualErr := getRestCountriesData(nil, testClient, server.URL+APIString, isoCode)
+		_, actualErr := getRestCountriesData(context.Background(), testClient, server.URL+APIString, isoCode)
 
 		// 3. Assertions
 		if actualErr == nil {
@@ -736,7 +736,7 @@ func TestGetRestCountriesData(t *testing.T) {
 
 		// 2. Call the function under test
 		testClient := server.Client()
-		_, actualErr := getRestCountriesData(nil, testClient, server.URL+APIString, defaultIsoCode)
+		_, actualErr := getRestCountriesData(context.Background(), testClient, server.URL+APIString, defaultIsoCode)
 
 		// 3. Assertions
 		if actualErr == nil {
@@ -760,7 +760,7 @@ func TestGetRestCountriesData(t *testing.T) {
 
 		// 2. Call the function under test
 		testClient := server.Client()
-		_, actualErr := getRestCountriesData(nil, testClient, server.URL+APIString, defaultIsoCode)
+		_, actualErr := getRestCountriesData(context.Background(), testClient, server.URL+APIString, defaultIsoCode)
 
 		// 3. Assertions
 		if actualErr == nil {
@@ -787,7 +787,7 @@ func TestGetRestCountriesData(t *testing.T) {
 		testClient := &http.Client{}
 
 		// 3. Call the function under test
-		_, actualErr := getRestCountriesData(nil, testClient, closedServerURL, defaultIsoCode)
+		_, actualErr := getRestCountriesData(context.Background(), testClient, closedServerURL, defaultIsoCode)
 
 		// 4. Assertions
 		if actualErr == nil {
@@ -844,7 +844,7 @@ func TestGetMetroData(t *testing.T) {
 
 		// 4. Call the function under test
 		testClient := server.Client()
-		actualData, actualErr := getMetroData(nil, testClient, server.URL+APIString, float64(defaultLat), float64(defaultLong))
+		actualData, actualErr := getMetroData(context.Background(), testClient, server.URL+APIString, float64(defaultLat), float64(defaultLong))
 
 		// 5. Assertions
 		if actualErr != nil {
@@ -865,7 +865,7 @@ func TestGetMetroData(t *testing.T) {
 
 		// 2. Call the function under test
 		testClient := server.Client()
-		_, actualErr := getMetroData(nil, testClient, server.URL+APIString, float64(defaultLat), float64(defaultLong))
+		_, actualErr := getMetroData(context.Background(), testClient, server.URL+APIString, float64(defaultLat), float64(defaultLong))
 
 		// 3. Assertions
 		if actualErr == nil {
@@ -890,7 +890,7 @@ func TestGetMetroData(t *testing.T) {
 
 		// 2. Call the function under test
 		testClient := server.Client()
-		_, actualErr := getMetroData(nil, testClient, server.URL+APIString, float64(defaultLat), float64(defaultLong))
+		_, actualErr := getMetroData(context.Background(), testClient, server.URL+APIString, float64(defaultLat), float64(defaultLong))
 
 		// 3. Assertions
 		if actualErr == nil {
@@ -917,7 +917,7 @@ func TestGetMetroData(t *testing.T) {
 		testClient := &http.Client{}
 
 		// 3. Call the function under test
-		_, actualErr := getMetroData(nil, testClient, closedServerURL, float64(defaultLat), float64(defaultLong))
+		_, actualErr := getMetroData(context.Background(), testClient, closedServerURL, float64(defaultLat), float64(defaultLong))
 
 		// 4. Assertions
 		if actualErr == nil {
@@ -981,7 +981,7 @@ func TestGetCurrencyData(t *testing.T) {
 
 		// 4. Call the function under test
 		testClient := server.Client()
-		actualData, actualErr := getCurrencyData(nil, testClient, server.URL+APIString, defaultInputCurrencies, defaultTargetCurrencies)
+		actualData, actualErr := getCurrencyData(context.Background(), testClient, server.URL+APIString, defaultInputCurrencies, defaultTargetCurrencies)
 
 		// 5. Assertions
 		if actualErr != nil {
@@ -1002,7 +1002,7 @@ func TestGetCurrencyData(t *testing.T) {
 
 		// 2. Call the function under test
 		testClient := server.Client()
-		_, actualErr := getCurrencyData(nil, testClient, server.URL+APIString, defaultInputCurrencies, defaultTargetCurrencies)
+		_, actualErr := getCurrencyData(context.Background(), testClient, server.URL+APIString, defaultInputCurrencies, defaultTargetCurrencies)
 
 		// 3. Assertions
 		if actualErr == nil {
@@ -1027,7 +1027,7 @@ func TestGetCurrencyData(t *testing.T) {
 
 		// 2. Call the function under test
 		testClient := server.Client()
-		_, actualErr := getCurrencyData(nil, testClient, server.URL+APIString, defaultInputCurrencies, defaultTargetCurrencies)
+		_, actualErr := getCurrencyData(context.Background(), testClient, server.URL+APIString, defaultInputCurrencies, defaultTargetCurrencies)
 
 		// 3. Assertions
 		if actualErr == nil {
@@ -1047,7 +1047,7 @@ func TestGetCurrencyData(t *testing.T) {
 		// No server needed for this test as it fails before HTTP request
 		// 2. Call the function under test
 		testClient := http.DefaultClient
-		_, actualErr := getCurrencyData(nil, testClient, "http://example.com", inputCurrencies, defaultTargetCurrencies)
+		_, actualErr := getCurrencyData(context.Background(), testClient, "http://example.com", inputCurrencies, defaultTargetCurrencies)
 
 		// 3. Assertions
 		if actualErr == nil {
@@ -1074,7 +1074,7 @@ func TestGetCurrencyData(t *testing.T) {
 		testClient := &http.Client{}
 
 		// 3. Call the function under test
-		_, actualErr := getCurrencyData(nil, testClient, closedServerURL, defaultInputCurrencies, defaultTargetCurrencies)
+		_, actualErr := getCurrencyData(context.Background(), testClient, closedServerURL, defaultInputCurrencies, defaultTargetCurrencies)
 
 		// 4. Assertions
 		if actualErr == nil {

@@ -61,14 +61,14 @@ func GetFirestoreDocument[T any](ctx context.Context, docId string, collection s
 	doc, err := docRef.Get(ctx)
 	if err != nil {
 		log.Printf("Failed to get firestore document %s: %v", docId, err)
-		return result, fmt.Errorf("Failed to get firestore document %s from %s: %w", docId, collection, err)
+		return result, fmt.Errorf("failed to get firestore document %s from %s: %w", docId, collection, err)
 	}
 
 	// Unmarshals the data in the document to struct
 	err2 := doc.DataTo(&result)
 	if err2 != nil {
 		log.Printf("Failed to unmarshal firestore document: %s: %v", docId, err)
-		return result, fmt.Errorf("Failed to unmarshal data for document %s from %s: %w", docId, collection, err2)
+		return result, fmt.Errorf("failed to unmarshal data for document %s from %s: %w", docId, collection, err2)
 	}
 
 	return result, nil
