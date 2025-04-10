@@ -18,7 +18,7 @@ func InitFirestore() error {
 	// Firebase initialisation
 	ctx := context.Background()
 
-	opt := option.WithCredentialsFile(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+	opt := option.WithCredentialsFile(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")) // API KEY as a env variable. - seems to work better than path when testing AND running program.
 	app, err := firebase.NewApp(ctx, nil, opt)
 	if err != nil {
 		log.Printf("error initializing app: %v", err)

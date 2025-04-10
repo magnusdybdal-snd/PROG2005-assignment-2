@@ -84,7 +84,7 @@ func GetFirestoreDocument[T any](ctx context.Context, docId string, collection s
 *	return r.Body - sucsessfully validated content
 *	return err    - error if post request does not match structs field.
  */
-func ValidatePostRequest(valid_schema interface{}, w http.ResponseWriter, r *http.Request) ([]byte, error) {
+func ValidatePostRequest(valid_schema interface{}, w http.ResponseWriter, r *http.Request, test bool) ([]byte, error) {
 
 	// Read request body
 	bodyBytes, err := io.ReadAll(r.Body)

@@ -1,0 +1,31 @@
+[{
+   "id": "Qqx0bRWYvE6J3mOhDEMF",
+   "country": "Norway",
+   "isoCode": "NO",
+   "features": {
+                  "temperature": true,
+                  "precipitation": true,
+                  "capital": true,
+                  "coordinates": true,
+                  "population": true,
+                  "area": false,
+                  "targetCurrencies": ["EUR", "USD", "SEK"]
+               },
+    "lastChange": "2025-04-08T12:07:00.832Z"
+},
+   {
+      "id": "VHBa7l2K1pFMkHZ6s951",
+      "country": "Denmark",
+      "isoCode": "DK",
+      "features": {
+                     "temperature": true,
+                     "precipitation": false,
+                     "capital": false,
+                     "coordinates": true,
+                     "population": true,
+                     "area": false,
+                     "targetCurrencies": ["EUR", "USD", "NOK"]
+                  },
+       "lastChange": "2025-04-08T10:09:01.244Z"
+   }
+]

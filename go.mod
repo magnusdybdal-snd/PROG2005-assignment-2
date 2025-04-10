@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go/firestore v1.18.0
 	firebase.google.com/go v3.13.0+incompatible
 	google.golang.org/api v0.228.0
+	google.golang.org/grpc v1.71.0
 )
 
 require (

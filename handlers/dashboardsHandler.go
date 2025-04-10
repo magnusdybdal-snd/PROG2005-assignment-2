@@ -314,7 +314,7 @@ func tryCacheRestCountries(ctx context.Context, client *http.Client, baseURL str
 	doc, err := docRef.Get(ctx)
 	if err == nil { // cache hit
 		var cachedData utils.CachedRestCountries
-		if err2 := doc.DataTo(&cachedData); err == nil {
+		if err2 := doc.DataTo(&cachedData); err2 == nil {
 			return cachedData.Data, nil // Sends the cahced data back
 		} else {
 			log.Printf("Error unmarshalling cached RestCountries data: %v", err2)
@@ -361,7 +361,7 @@ func tryCacheMetro(ctx context.Context, client *http.Client, baseURL string, lat
 	doc, err := docRef.Get(ctx)
 	if err == nil { // cache hit
 		var cachedData utils.CachedMetro
-		if err2 := doc.DataTo(&cachedData); err == nil {
+		if err2 := doc.DataTo(&cachedData); err2 == nil {
 			return cachedData.Data, nil // Sends the cahced data back
 		} else {
 			log.Printf("Error unmarshalling cached Metro data: %v", err2)
@@ -414,7 +414,7 @@ func tryCacheCurrency(ctx context.Context, client *http.Client, baseURL string, 
 	doc, err := docRef.Get(ctx)
 	if err == nil { // cache hit
 		var cachedData utils.CachedCurrency
-		if err2 := doc.DataTo(&cachedData); err == nil {
+		if err2 := doc.DataTo(&cachedData); err2 == nil {
 			return cachedData.Data, nil // Sends the cahced data back
 		} else {
 			log.Printf("Error unmarshalling cached Currency data: %v", err2)
