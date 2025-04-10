@@ -1,12 +1,8 @@
 package handlers
 
-/*
-*	TODO: 	Add timeouts for API calls
-	TODO:	Consider adding context to http request for proper timeout management
-*/
-
 import (
 	"assignment2/utils"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -15,22 +11,46 @@ import (
 	"time"
 )
 
+/*
+*	These variables are used to swap the actual functions to mocked ones during testing
+ */
+var (
+	getConficFunc             = utils.GetFirestoreDocument[utils.DashboardConfig]
+	getCountriesFunc          = getRestCountriesData
+	getMetroFunc              = getMetroData
+	getCurrencyFunc           = getCurrencyData
+	tryCacheRestCountriesFunc = tryCacheRestCountries
+	tryCacheMetroFunc         = tryCacheMetro
+	tryCacheCurrencyFunc      = tryCacheCurrency
+)
+
+/*
+*	Handler function for dashboards endpoint. The handler does all the logic
+*	and calls helper functions when it needs data from firestore or external API's
+ */
 func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
+
+	// Checks the REST method
+	if r.Method != http.MethodGet {
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
+
 	// Test for embedded dashboard id
 	dashboardId := r.PathValue("id")
 	if dashboardId == "" {
 		log.Println("Error, dashboard id is required")
-		http.Error(w, "error dashboard id is required.", http.StatusBadRequest)
+		http.Error(w, "Dashboard id is required.", http.StatusBadRequest)
 		return
 	}
 
 	// Retrieves the dashboard configuration from firestore database
-	dashboardConfig, err := utils.GetDashboardConfig[utils.DashboardConfig](ctx, dashboardId, utils.DASHBOARD_COLLECTION)
+	dashboardConfig, err := getConficFunc(ctx, dashboardId, utils.DASHBOARD_COLLECTION)
 	if err != nil {
 		log.Printf("Error retrieving dashboard config from database: %v", err)
-		http.Error(w, "error retrieving dashboard", http.StatusInternalServerError)
+		http.Error(w, "Could not find dashboard "+dashboardId, http.StatusInternalServerError)
 		return
 	}
 
@@ -50,7 +70,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Gets the data from REST Countries if needed
 	if needRestCountriesAPI {
-		restCountriesData, err = getRestCountriesData(dashboardConfig.IsoCode)
+		restCountriesData, err = tryCacheRestCountriesFunc(ctx, http.DefaultClient, utils.RESTCountriesAPI, dashboardConfig.IsoCode)
 		if err != nil {
 			log.Printf("Error getting RestCountries data: %v", err)
 			http.Error(w, "Error getting country information", http.StatusInternalServerError)
@@ -60,7 +80,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Gets the data from Metro API if needed
 	if needMetroAPI {
-		metroData, err = getMetroData(float64(restCountriesData.Coordinates[0]), float64(restCountriesData.Coordinates[1]))
+		metroData, err = tryCacheMetroFunc(ctx, http.DefaultClient, utils.MetroAPI, float64(restCountriesData.Coordinates[0]), float64(restCountriesData.Coordinates[1]))
 		if err != nil {
 			log.Printf("Error getting MetroAPI data: %v", err)
 			http.Error(w, "Error getting weather information", http.StatusInternalServerError)
@@ -70,7 +90,7 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Gets the data from Currency API if needed
 	if needCurrencyAPI {
-		currencyData, err = getCurrencyData(restCountriesData.Currencies, dashboardConfig.Features.TargetCurrencies)
+		currencyData, err = tryCacheCurrencyFunc(ctx, http.DefaultClient, utils.CurrencyAPI, restCountriesData.Currencies, dashboardConfig.Features.TargetCurrencies)
 		if err != nil {
 			log.Printf("Error getting Currency API data: %v", err)
 			http.Error(w, "Error getting currency information", http.StatusInternalServerError)
@@ -78,10 +98,11 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Puts together the response with the fields required for the dashboard settings
 	var response utils.DashboardResponse
 	response.Country = dashboardConfig.Country
 	response.IsoCode = dashboardConfig.IsoCode
-	response.LastRetrieval = time.Now()
+	response.LastRetrieval = time.Now().Format("20060102 15:04")
 
 	if dashboardConfig.Features.Capital {
 		response.Features.Capital = restCountriesData.Capital[0]
@@ -117,20 +138,32 @@ func HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 	// Set the response content type to JSON
 	w.Header().Set("Content-Type", "application/json")
 
+	// Encode the response to JSON
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("error encoding response: %v", err)
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 		return
 	}
+	invokeWebhook(utils.INVOKE, response.IsoCode, ctx)
 }
 
-func getRestCountriesData(IsoCode string) (utils.RestCountriesResponse, error) {
+/*
+* 	Function that calls the third party API RestCountries and returns data to the handler
+*
+* 	param ctx - context used with webhooks
+*	param client - http client
+*	param baseURL - url to the API without ISO code
+*	param IsoCode - 2 letter IsoCode used to call the API
+*
+*	return RerstCountriesResponse - struct populated with information needed by handler
+ */
+func getRestCountriesData(ctx context.Context, client *http.Client, baseURL string, IsoCode string) (utils.RestCountriesResponse, error) {
 
 	// Url to invoke
-	url := utils.RESTCountriesAPI + IsoCode
+	url := baseURL + IsoCode
 
-	// Uses http.Get to setup standard client and do the request
-	resp, err := http.Get(url)
+	// Uses get with default http client
+	resp, err := client.Get(url)
 	if err != nil {
 		return utils.RestCountriesResponse{}, fmt.Errorf("error fetching country info form REST Countries: %v", err)
 	}
@@ -138,6 +171,9 @@ func getRestCountriesData(IsoCode string) (utils.RestCountriesResponse, error) {
 
 	// Check the HTTP status code
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusInternalServerError {
+			invokeWebhook(utils.NOTREACHABLE, "", ctx)
+		}
 		return utils.RestCountriesResponse{}, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
 	}
 
@@ -156,16 +192,23 @@ func getRestCountriesData(IsoCode string) (utils.RestCountriesResponse, error) {
 }
 
 /*
-*	This function invokes the Metro API with the parameter latitude and logitude, and returns temperature and precipiation hourly
-*	for a 7 day forecast as a struct with two lists. TODO: calculate mean value and return the mean values as a list??
+* 	Function that calls the third party API MetroAPI and returns data to the handler
+*
+* 	param ctx - context used with webhooks
+*	param client - http client
+*	param baseURL - url to the API with placeholders for longitude and latitude
+*	param lat - latitude coordinate
+*	param long - longitude coordinate
+*
+*	return MetroMeanValues - struct populated with information needed by handler
  */
-func getMetroData(lat float64, long float64) (utils.MetroMeanValues, error) {
+func getMetroData(ctx context.Context, client *http.Client, baseURL string, lat float64, long float64) (utils.MetroMeanValues, error) {
 
 	// Url to invoke
-	url := fmt.Sprintf(utils.MetroAPI, lat, long)
+	url := fmt.Sprintf(baseURL, lat, long)
 
 	// Uses http.Get with standard client and does the request
-	resp, err := http.Get(url)
+	resp, err := client.Get(url)
 	if err != nil {
 		return utils.MetroMeanValues{}, fmt.Errorf("error fetching weather data from Metro API: %v", err)
 	}
@@ -173,6 +216,9 @@ func getMetroData(lat float64, long float64) (utils.MetroMeanValues, error) {
 
 	// Check the HTTP status code
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusInternalServerError {
+			invokeWebhook(utils.NOTREACHABLE, "", ctx)
+		}
 		return utils.MetroMeanValues{}, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
 	}
 
@@ -182,6 +228,7 @@ func getMetroData(lat float64, long float64) (utils.MetroMeanValues, error) {
 		return utils.MetroMeanValues{}, fmt.Errorf("error when decoding json: %v", err)
 	}
 
+	// Calculates the mean values for temp and precipiation
 	meanPrecip := calculateMean(apiResponse.Hourly.Precipitation)
 	meanTemp := calculateMean(apiResponse.Hourly.Temperature2M)
 
@@ -193,22 +240,33 @@ func getMetroData(lat float64, long float64) (utils.MetroMeanValues, error) {
 	return meanResponse, nil
 }
 
-func getCurrencyData(currencies map[string]interface{}, targetCurrencies []string) (map[string]float64, error) {
+/*
+* 	Function that calls the third party API Currencies and returns data to the handler
+*
+* 	param ctx - context used with webhooks
+*	param client - http client
+*	param baseURL - url to the API without currency ISO code
+*	param currencies - currencies used in the targeted country (returned by RestCountries)
+*	param targetCurrencies - Currencies we want displayed in the dashboard
+*
+*	return map[string]float64 - map with currency names and rates compared to the currency of the country
+ */
+func getCurrencyData(ctx context.Context, client *http.Client, baseURL string, currencies map[string]interface{}, targetCurrencies []string) (map[string]float64, error) {
 	// Extracts the FIRST currency if there are more than one
 	var currencyISO string
 	for iso := range currencies {
 		currencyISO = iso
 		break
 	}
-	// Checks that a currency is found in the response
+	// Checks that a currency is found for the country
 	if currencyISO == "" {
-		return nil, fmt.Errorf("error: no currencies found in response")
+		return nil, fmt.Errorf("error: no currencies found for country")
 	}
 	// url to invoke
-	url := utils.CurrencyAPI + currencyISO
+	url := baseURL + currencyISO
 
 	// Uses http.Get with standard client and does the request
-	resp, err := http.Get(url)
+	resp, err := client.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching currency data from Currency API: %v", err)
 	}
@@ -216,6 +274,9 @@ func getCurrencyData(currencies map[string]interface{}, targetCurrencies []strin
 
 	// Check the HTTP status code
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusInternalServerError {
+			invokeWebhook(utils.NOTREACHABLE, "", ctx)
+		}
 		return nil, fmt.Errorf("API returned non-200 status code: %d", resp.StatusCode)
 	}
 	// Decodes json response into struct.
@@ -235,6 +296,155 @@ func getCurrencyData(currencies map[string]interface{}, targetCurrencies []strin
 	return filteredRates, nil
 }
 
+/*
+* 	Function that checks for cached entries of third party API information before envoking the API
+*	for RestCountries
+*
+* 	param ctx - context used with webhooks
+*	param client - http client
+*	param baseURL - url to the API without ISO code
+*	param IsoCode - 2 letter IsoCode used to call the API
+*
+*	return RerstCountriesResponse - struct populated with information needed by handler
+ */
+func tryCacheRestCountries(ctx context.Context, client *http.Client, baseURL string, IsoCode string) (utils.RestCountriesResponse, error) {
+	cacheKey := fmt.Sprintf("restcountries_%s", IsoCode)
+	docRef := utils.FirestoreClient.Collection(utils.CACHE_COLLECTION).Doc(cacheKey)
+
+	doc, err := docRef.Get(ctx)
+	if err == nil { // cache hit
+		var cachedData utils.CachedRestCountries
+		if err2 := doc.DataTo(&cachedData); err2 == nil {
+			return cachedData.Data, nil // Sends the cahced data back
+		} else {
+			log.Printf("Error unmarshalling cached RestCountries data: %v", err2)
+		}
+	} else {
+		log.Printf("Cache miss for RestCountries: %s", IsoCode)
+	}
+
+	// Cache miss or error: Get new data
+	newData, newErr := getCountriesFunc(ctx, client, baseURL, IsoCode)
+	if newErr != nil {
+		return utils.RestCountriesResponse{}, newErr
+	}
+
+	// Store the new data in cache
+	cacheEntry := utils.CachedRestCountries{
+		Data:      newData,
+		Timestamp: time.Now(),
+	}
+	_, addErr := docRef.Set(ctx, cacheEntry)
+	if addErr != nil {
+		log.Printf("Failed to save RestCountries to cache: %v", addErr)
+	}
+
+	return newData, nil
+}
+
+/*
+* 	Function that checks for cached entries of third party API information before envoking the API
+*	for Metro API
+*
+* 	param ctx - context used with webhooks
+*	param client - http client
+*	param baseURL - url to the API with placeholders for longitude and latitude
+*	param lat - latitude coordinate
+*	param long - longitude coordinate
+*
+*	return MetroMeanValues - struct populated with information needed by handler
+ */
+func tryCacheMetro(ctx context.Context, client *http.Client, baseURL string, lat float64, long float64) (utils.MetroMeanValues, error) {
+	cacheKey := fmt.Sprintf("metro_%f_%f", lat, long)
+	docRef := utils.FirestoreClient.Collection(utils.CACHE_COLLECTION).Doc(cacheKey)
+
+	doc, err := docRef.Get(ctx)
+	if err == nil { // cache hit
+		var cachedData utils.CachedMetro
+		if err2 := doc.DataTo(&cachedData); err2 == nil {
+			return cachedData.Data, nil // Sends the cahced data back
+		} else {
+			log.Printf("Error unmarshalling cached Metro data: %v", err2)
+		}
+	} else {
+		log.Printf("Cache miss for Metro: long:%f lat:%f", long, lat)
+	}
+
+	// Cache miss or error: Get new data
+	newData, newErr := getMetroFunc(ctx, client, baseURL, lat, long)
+	if newErr != nil {
+		return utils.MetroMeanValues{}, newErr
+	}
+
+	// Store the new data in cache
+	cacheEntry := utils.CachedMetro{
+		Data:      newData,
+		Timestamp: time.Now(),
+	}
+	_, addErr := docRef.Set(ctx, cacheEntry)
+	if addErr != nil {
+		log.Printf("Failed to save Metro to cache: %v", addErr)
+	}
+
+	return newData, nil
+}
+
+/*
+* 	Function that checks for cached entries of third party API information before envoking the API
+*	for Currency API
+*
+* 	param ctx - context used with webhooks
+*	param client - http client
+*	param baseURL - url to the API without currency ISO code
+*	param currencies - currencies used in the targeted country (returned by RestCountries)
+*	param targetCurrencies - Currencies we want displayed in the dashboard
+*
+*	return map[string]float64 - map with currency names and rates compared to the currency of the country
+ */
+func tryCacheCurrency(ctx context.Context, client *http.Client, baseURL string, currencies map[string]interface{}, targetCurrencies []string) (map[string]float64, error) {
+
+	var currencyISO string
+	for iso := range currencies {
+		currencyISO = iso
+		break
+	}
+	cacheKey := fmt.Sprintf("currency_%s", currencyISO)
+	docRef := utils.FirestoreClient.Collection(utils.CACHE_COLLECTION).Doc(cacheKey)
+
+	doc, err := docRef.Get(ctx)
+	if err == nil { // cache hit
+		var cachedData utils.CachedCurrency
+		if err2 := doc.DataTo(&cachedData); err2 == nil {
+			return cachedData.Data, nil // Sends the cahced data back
+		} else {
+			log.Printf("Error unmarshalling cached Currency data: %v", err2)
+		}
+	} else {
+		log.Printf("Cache miss for Currency: %s", currencyISO)
+	}
+
+	// Cache miss or error: Get new data
+	newData, newErr := getCurrencyFunc(ctx, client, baseURL, currencies, targetCurrencies)
+	if newErr != nil {
+		return nil, newErr
+	}
+
+	// Store the new data in cache
+	cacheEntry := utils.CachedCurrency{
+		Data:      newData,
+		Timestamp: time.Now(),
+	}
+	_, addErr := docRef.Set(ctx, cacheEntry)
+	if addErr != nil {
+		log.Printf("Failed to save Currency to cache: %v", addErr)
+	}
+
+	return newData, nil
+}
+
+/*
+*	Function that returns the mean value, calculated from a list of values
+ */
 func calculateMean(val []float64) float64 {
 
 	if len(val) == 0 {
@@ -246,5 +456,5 @@ func calculateMean(val []float64) float64 {
 		sum += v
 	}
 	mean := sum / float64(len(val))
-	return math.Round(mean * 100) / 100
+	return math.Round(mean*100) / 100
 }

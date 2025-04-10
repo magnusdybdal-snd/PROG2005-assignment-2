@@ -2,6 +2,31 @@ package utils
 
 import "time"
 
+type SendNotification struct {
+	ID      string `json:"id"`
+	Country string `firestore:"country" json:"country"`
+	Event   string `firestore:"event" json:"event"`
+	Time    string `json:"time"`
+}
+type RegisterWebhook struct {
+	Url     string `firestore:"url" json:"url"`
+	Country string `firestore:"country" json:"country"`
+	Event   string `firestore:"event" json:"event"`
+}
+
+// When a get request is made, this is the struct to be returned
+type ReturnWebhook struct {
+	ID      string `json:"id"`
+	Country string `firestore:"country" json:"country"`
+	Event   string `firestore:"event" json:"event"`
+	Url     string `firestore:"url" json:"url"`
+}
+
+// used to return the ID of the webhook
+type WebhookId struct {
+	ID string `json:"id"`
+}
+
 /*
  *	Struct for dashboard configurations
  */
@@ -57,10 +82,10 @@ type DashboardResponse struct {
 		Capital          string             `json:"capital,omitempty"`
 		Coordinates      map[string]float64 `json:"coordinates,omitempty"`
 		Population       int                `json:"population,omitempty"`
-		Area             int                `json:"area,omitempty"`
+		Area             float64            `json:"area,omitempty"`
 		TargetCurrencies map[string]float64 `json:"targetCurrencies,omitempty"`
 	} `json:"features"`
-	LastRetrieval time.Time `json:"lastRetrieval"`
+	LastRetrieval string `json:"lastRetrieval"`
 }
 
 /*
@@ -68,9 +93,9 @@ type DashboardResponse struct {
  */
 type RestCountriesResponse struct {
 	Capital     []string               `json:"capital"`
-	Coordinates []int                  `json:"latlng"`
+	Coordinates []float64              `json:"latlng"`
 	Population  int                    `json:"population"`
-	Area        int                    `json:"area"`
+	Area        float64                `json:"area"`
 	Currencies  map[string]interface{} `json:"currencies"`
 }
 
@@ -84,6 +109,9 @@ type MetroResponse struct {
 	} `json:"hourly"`
 }
 
+/*
+*	Struct returned from getMetroData()
+ */
 type MetroMeanValues struct {
 	MeanPrecipitation float64
 	MeanTemperature   float64
@@ -103,4 +131,29 @@ type CurrencyResponse struct {
 type RegistrationGetResponse struct {
 	Id string `json:"id"`
 	DashboardConfig
+}
+
+type Status struct {
+	Countries_api   int    `json:"countries_api"`
+	Metro_api       int    `json:"metro_api"`
+	Currency_api    int    `json:"currency_api"`
+	Notification_db int    `json:"notification_db"`
+	Webhooks        int    `json:"webhooks"`
+	Version         string `json:"version"`
+	Uptime          int    `json:"uptime"`
+}
+
+type CachedRestCountries struct {
+	Data      RestCountriesResponse `firestore:"data"`
+	Timestamp time.Time             `firestore:"timestamp"`
+}
+
+type CachedMetro struct {
+	Data      MetroMeanValues `firestore:"data"`
+	Timestamp time.Time       `firestore:"timestamp"`
+}
+
+type CachedCurrency struct {
+	Data      map[string]float64 `firestore:"data"`
+	Timestamp time.Time          `firestore:"timestamp"`
 }

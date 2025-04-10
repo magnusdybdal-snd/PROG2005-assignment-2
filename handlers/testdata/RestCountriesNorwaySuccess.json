@@ -1,0 +1,221 @@
+[
+    {
+      "name": {
+        "common": "Norway",
+        "official": "Kingdom of Norway",
+        "nativeName": {
+          "nno": {
+            "official": "Kongeriket Noreg",
+            "common": "Noreg"
+          },
+          "nob": {
+            "official": "Kongeriket Norge",
+            "common": "Norge"
+          },
+          "smi": {
+            "official": "Norgga gonagasriika",
+            "common": "Norgga"
+          }
+        }
+      },
+      "tld": [
+        ".no"
+      ],
+      "cca2": "NO",
+      "ccn3": "578",
+      "cca3": "NOR",
+      "cioc": "NOR",
+      "independent": true,
+      "status": "officially-assigned",
+      "unMember": true,
+      "currencies": {
+        "NOK": {
+          "name": "Norwegian krone",
+          "symbol": "kr"
+        }
+      },
+      "idd": {
+        "root": "+4",
+        "suffixes": [
+          "7"
+        ]
+      },
+      "capital": [
+        "Oslo"
+      ],
+      "altSpellings": [
+        "NO",
+        "Norge",
+        "Noreg",
+        "Kingdom of Norway",
+        "Kongeriket Norge",
+        "Kongeriket Noreg"
+      ],
+      "region": "Europe",
+      "subregion": "Northern Europe",
+      "languages": {
+        "nno": "Norwegian Nynorsk",
+        "nob": "Norwegian Bokmål",
+        "smi": "Sami"
+      },
+      "translations": {
+        "ara": {
+          "official": "مملكة النرويج",
+          "common": "النرويج"
+        },
+        "bre": {
+          "official": "Rouantelezh Norvegia",
+          "common": "Norvegia"
+        },
+        "ces": {
+          "official": "Norské království",
+          "common": "Norsko"
+        },
+        "cym": {
+          "official": "Kingdom of Norway",
+          "common": "Norway"
+        },
+        "deu": {
+          "official": "Königreich Norwegen",
+          "common": "Norwegen"
+        },
+        "est": {
+          "official": "Norra Kuningriik",
+          "common": "Norra"
+        },
+        "fin": {
+          "official": "Norjan kuningaskunta",
+          "common": "Norja"
+        },
+        "fra": {
+          "official": "Royaume de Norvège",
+          "common": "Norvège"
+        },
+        "hrv": {
+          "official": "Kraljevina Norveška",
+          "common": "Norveška"
+        },
+        "hun": {
+          "official": "Norvég Királyság",
+          "common": "Norvégia"
+        },
+        "ita": {
+          "official": "Regno di Norvegia",
+          "common": "Norvegia"
+        },
+        "jpn": {
+          "official": "ノルウェー王国",
+          "common": "ノルウェー"
+        },
+        "kor": {
+          "official": "노르웨이 왕국",
+          "common": "노르웨이"
+        },
+        "nld": {
+          "official": "Koninkrijk Noorwegen",
+          "common": "Noorwegen"
+        },
+        "per": {
+          "official": "پادشاهی نروژ",
+          "common": "نروژ"
+        },
+        "pol": {
+          "official": "Królestwo Norwegii",
+          "common": "Norwegia"
+        },
+        "por": {
+          "official": "Reino da Noruega",
+          "common": "Noruega"
+        },
+        "rus": {
+          "official": "Королевство Норвегия",
+          "common": "Норвегия"
+        },
+        "slk": {
+          "official": "Nórske kráľovstvo",
+          "common": "Nórsko"
+        },
+        "spa": {
+          "official": "Reino de Noruega",
+          "common": "Noruega"
+        },
+        "srp": {
+          "official": "Краљевина Норвешка",
+          "common": "Норвешка"
+        },
+        "swe": {
+          "official": "Konungariket Norge",
+          "common": "Norge"
+        },
+        "tur": {
+          "official": "Norveç Krallığı",
+          "common": "Norveç"
+        },
+        "urd": {
+          "official": "مملکتِ ناروے",
+          "common": "ناروے"
+        },
+        "zho": {
+          "official": "挪威王国",
+          "common": "挪威"
+        }
+      },
+      "latlng": [62, 10],
+      "landlocked": false,
+      "borders": [
+        "FIN",
+        "SWE",
+        "RUS"
+      ],
+      "area": 323802,
+      "demonyms": {
+        "eng": {
+          "f": "Norwegian",
+          "m": "Norwegian"
+        },
+        "fra": {
+          "f": "Norvégienne",
+          "m": "Norvégien"
+        }
+      },
+      "flag": "🇳🇴",
+      "maps": {
+        "googleMaps": "https://goo.gl/maps/htWRrphA7vNgQNdSA",
+        "openStreetMaps": "https://www.openstreetmap.org/relation/2978650"
+      },
+      "population": 5379475,
+      "gini": {
+        "2018": 27.6
+      },
+      "fifa": "NOR",
+      "car": {
+        "signs": [
+          "N"
+        ],
+        "side": "right"
+      },
+      "timezones": [
+        "UTC+01:00"
+      ],
+      "continents": [
+        "Europe"
+      ],
+      "flags": {
+        "png": "https://flagcdn.com/w320/no.png",
+        "svg": "https://flagcdn.com/no.svg",
+        "alt": "The flag of Norway has a red field with a large white-edged navy blue cross that extends to the edges of the field. The vertical part of this cross is offset towards the hoist side."
+      },
+      "coatOfArms": {
+        "png": "https://mainfacts.com/media/images/coats_of_arms/no.png",
+        "svg": "https://mainfacts.com/media/images/coats_of_arms/no.svg"
+      },
+      "startOfWeek": "monday",
+      "capitalInfo": {
+        "latlng": [59.92, 10.75]
+      },
+      "postalCode": {
+        "format": "####",
+        "regex": "^(\\d{4})$"
+      }
+    }
+  ]

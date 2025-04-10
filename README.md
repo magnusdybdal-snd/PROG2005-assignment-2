@@ -1,93 +1,139 @@
 # Assignment2
 
-
-
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
-```
-cd existing_repo
-git remote add origin https://git.gvk.idi.ntnu.no/course/prog2005/prog2005-2025-workspace/olemgl/assignment2.git
-git branch -M main
-git push -uf origin main
-```
-
-## Integrate with your tools
-
-- [ ] [Set up project integrations](https://git.gvk.idi.ntnu.no/course/prog2005/prog2005-2025-workspace/olemgl/assignment2/-/settings/integrations)
-
-## Collaborate with your team
-
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
+## Table of contents
+- [Description](#description)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Contributing](#contributing)
+- [Testing](#testing)
 
 ## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+This project was created to show country information based on registrations in a dashboard. The dashboard is created using the Firebase console and the API is implemented using Go. The API is then used to create a webhook that is invoked when a new registration, deletion, change, invoke or not reachable event is registered.
 
 ## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+### Ubuntu/Debian
+```bash
+sudo apt install golang-go
+git clone https://git.gvk.idi.ntnu.no/course/prog2005/prog2005-2025-workspace/olemgl/assignment2.git
+cd assignment2
+go mod download
+go run main.go
+```
+### Windows
+https://go.dev/doc/install
+```bash
+git clone https://git.gvk.idi.ntnu.no/course/prog2005/prog2005-2025-workspace/olemgl/assignment2.git
+cd assignment2
+go mod download
+go run main.go
+```
+### API Key
+You will need a firebase API key to run the project. In order to use the API kek with the docker-compose file, create a folder caller api-keys and add a file called serviceAccountKey.json.
 
 ## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+This API offers the following functionality:
+### Registration endpoint
+### Register a new dashboard
+Make a POST request to the /dashboards/v1/registrations/ endpoint with the following JSON schema (all fields are required):
+```json
+{
+    "country": "Norway",
+    "isoCode": "NO",
+    "features": {
+        "capital": true,
+        "coordinates": true,
+        "population": true,
+        "area": true,
+        "targetCurrencies": ["USD", "EUR", "SEK"]
+    }
+}
+```
+It will return a 201 status code if the dashboard was registered successfully.
+### Get all dashboards
+Make a GET request to the /dashboards/v1/registrations/ endpoint. The response will have all dashboards registered. It will return a 200 status code if the dashboards were found.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+### Get a specific dashboard
+Make a GET request to the /dashboards/v1/registrations/{id} endpoint. The response will have the dashboard with a specified id. It will return a 200 status code if the dashboard was found.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+### Delete a specific dashboard
+Make a DELETE request to the /dashboards/v1/registrations/{id} endpoint. The dashboard with a specified id will be deleted. It will return a 204 status code if the dashboard was deleted successfully. This will send a notification to all webhooks registered for the dashboard and or the country.
+
+### Update a specific dashboard
+Make a PUT request to the /dashboards/v1/registrations/{id} endpoint with the following JSON schema (all fields are required):
+```json
+{
+    "country": "Norway",
+    "isoCode": "NO",
+    "features": {
+        "capital": true,
+        "coordinates": true,
+        "population": true,
+        "area": true,
+        "targetCurrencies": ["USD", "EUR", "SEK"]
+    }
+}
+```
+It will return a 200 status code if the dashboard was updated successfully.
+This will send a notification to all webhooks registered for the dashboard and or the country.
+### Dashboards endpoint
+Make a GET request to the /dashboards/v1/dashboards/{id} endpoint. The response will have the dashboard with a specified id. It will return a 200 status code if the dashboard was found.
+### Notification endpoint
+This endpoint gives you controll over webhooks in the API. The events for notifications are:
+- REGISTER - when a new dashboard is registered
+- CHANGE - when a dashboard is updated
+- DELETE - when a dashboard is deleted
+- INVOKE - when a dashboard is invoked
+- NOT_REACHABLE - when an external API is not reachable
+### Register a new webhook
+Make a POST request to the /dashboards/v1/notifications/ endpoint with the following JSON schema (all fields are required):
+```json
+{
+    "country": "Norway",
+    "event": "INVOKE",
+    "url": "https://example.com/webhook"
+}
+```
+It will return a 201 status code if the webhook was registered successfully.
+### Get all webhooks
+Make a GET request to the /dashboards/v1/notifications/ endpoint. The response will have all webhooks registered. It will return a 200 status code if the webhooks were found.
+### Get a specific webhook
+Make a GET request to the /dashboards/v1/notifications/{id} endpoint. The response will have the webhook with a specified id. It will return a 200 status code if the webhook was found.
+### Delete a specific webhook
+Make a DELETE request to the /dashboards/v1/notifications/{id} endpoint. The webhook with a specified id will be deleted. It will return a 204 status code if the webhook was deleted successfully.
+### Update a specific webhook
+Make a PATCH request to the /dashboards/v1/notifications/{id} endpoint with the following JSON schema to update one or more fields:
+```json
+{
+    "country": "Norway",
+    "event": "INVOKE",
+    "url": "https://example.com/webhook"
+}
+```
+It will return a 204 status code if the webhook was updated successfully.
+### Invoke of a webhook
+It will make a POST request to the webhook URL specified in the request. It will send a JSON payload with the following schema:
+```json
+{
+    "webhookId": "webhook-id",
+    "country": "",
+    "event": "",
+    "time": "YYYYMMDD HH:MM"
+}  
+```
+It will log the http status code of the response and return a 200 status code if the webhook was invoked successfully.
 
 ## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+The endpoints were created by: <br>
+Registration endpoint/handler - Marius Eilertsen (mailert) <br>
+Dashboards endpoint/handler - Magnus Dybdal (magndy) <br>
+Notification endpoint/handler/Webhook invokation - Ole Marius Glomsrud (olemgl) <br>
+Status endpoint - Ole Marius Glomsrud (olemgl) <br>
+All tests were written by the respected authors.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+## Testing
+All tests are written in the handlers package. The tests are run using the go test command. To run the tests, run the following command in the root directory of the project:
+```bash
+cd handlers
+go test
+```

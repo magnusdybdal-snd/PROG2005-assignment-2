@@ -99,6 +99,8 @@ func updateDocument(w http.ResponseWriter, r *http.Request, ctx context.Context,
 		return
 	}
 
+	invokeWebhook(utils.CHANGE, updateData.IsoCode, ctx)
+
 	// Return the updated document
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -135,12 +137,21 @@ func deleteDocument(w http.ResponseWriter, r *http.Request, ctx context.Context,
 	res := utils.FirestoreClient.Collection(collection).Doc(messageId)
 
 	// Checks if the document exists in database.
-	_, err := res.Get(ctx)
+	doc, err := res.Get(ctx)
 	if err != nil {
 		log.Println("Document ID does not exist. Id: " + messageId)
 		http.Error(w, http.StatusText(http.StatusBadRequest)+": Invalid ID", http.StatusBadRequest)
 		return
 	}
+
+	var documentResponse utils.RegistrationGetResponse
+	documentResponse.Id = messageId // Add document ID to struct.
+	if err := doc.DataTo(&documentResponse); err != nil {
+		log.Println("Failed to construct struct response")
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+	}
+
+	invokeWebhook(utils.DELETE, documentResponse.IsoCode, ctx)
 
 	// Retrieve reference to document.
 	_, err2 := res.Delete(ctx)
@@ -149,6 +160,7 @@ func deleteDocument(w http.ResponseWriter, r *http.Request, ctx context.Context,
 		http.Error(w, "Failed to delete document", http.StatusInternalServerError)
 		return
 	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -215,35 +227,34 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Cont
 			log.Println("Error when adding document:", err2)
 			http.Error(w, "Error when adding document: "+err2.Error(), http.StatusBadRequest)
 			return
+		}
 
+		invokeWebhook(utils.REGISTER, s.IsoCode, ctx)
+
+		log.Println("Document added successfully, creating response")
+		response := struct {
+			ID            string    `json:"id"`
+			LastRetrieval time.Time `json:"lastChange"`
+		}{
+			ID:            id.ID,
+			LastRetrieval: s.LastRetrieval,
+		}
+		responseJSON, err := json.Marshal(response)
+		if err != nil {
+			log.Println("Error creating JSON response:", err)
+			http.Error(w, "Error creating response", http.StatusInternalServerError)
+			return
+		}
+		log.Println("Setting headers and writing response")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+
+		n, err := w.Write(responseJSON) // This sould be fine as long as the json is checked properly.
+		if err != nil {
+			log.Println("Error writing response:", err)
+			return
 		} else {
-			log.Println("Document added successfully, creating response")
-			response := struct {
-				ID            string    `json:"id"`
-				LastRetrieval time.Time `json:"lastChange"`
-			}{
-				ID:            id.ID,
-				LastRetrieval: s.LastRetrieval,
-			}
-
-			responseJSON, err := json.Marshal(response)
-			if err != nil {
-				log.Println("Error creating JSON response:", err)
-				http.Error(w, "Error creating response", http.StatusInternalServerError)
-				return
-			}
-
-			log.Println("Setting headers and writing response")
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
-
-			n, err := w.Write(responseJSON) // This sould be fine as long as the json is checked properly ln53.
-			if err != nil {
-				log.Println("Error writing response:", err)
-				return
-			} else {
-				log.Println("Wrote", n, "bytes successfully")
-			}
+			log.Println("Wrote", n, "bytes successfully")
 		}
 	}
 }
