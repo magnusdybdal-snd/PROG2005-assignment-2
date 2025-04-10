@@ -8,7 +8,6 @@ package handlers
 // 4. DELETE request to delete a specific webhook
 //*
 
-
 import (
 	"assignment2/utils"
 	"bytes"
@@ -23,6 +22,11 @@ var response utils.WebhookId
 
 // TestPostRequest tests the POST request to register a new webhook
 func TestPostRequest(t *testing.T) {
+	if utils.FirestoreClient == nil {
+		t.Error("Error firestore client is not open")
+	}
+	t.Log("TestPostRequest")
+
 	// Create the payload
 	payloadStruct := utils.RegisterWebhook{Url: "http://localhost:8081/invoked", Country: "SE", Event: "INVOKE"}
 	jsonPayload, err := json.Marshal(payloadStruct)
@@ -31,7 +35,7 @@ func TestPostRequest(t *testing.T) {
 	}
 
 	// Create the request
-	req := httptest.NewRequest(http.MethodPost, "http://localhost:8080"+utils.REGISTRATION_PATH, bytes.NewBuffer(jsonPayload))
+	req := httptest.NewRequest(http.MethodPost, "http://localhost:8080"+utils.NOTIFICATION_PATH, bytes.NewBuffer(jsonPayload))
 	// Create the recorder
 	w := httptest.NewRecorder()
 
@@ -54,9 +58,11 @@ func TestPostRequest(t *testing.T) {
 	if response.ID == "" {
 		t.Errorf("Response ID is empty")
 	}
+	t.Log("TestPostRequest: success")
 }
 
 func TestPatchRequest(t *testing.T) {
+	t.Log("TestPatchRequest")
 	// payload to be changed from SE to NO
 	payloadStruct := utils.RegisterWebhook{Url: "", Country: "NO", Event: ""}
 	jsonPayload, err := json.Marshal(payloadStruct)
@@ -64,6 +70,7 @@ func TestPatchRequest(t *testing.T) {
 		t.Errorf("Error marshalling payload: %v", err)
 	}
 
+	t.Log(response.ID)
 	// make request
 	req := httptest.NewRequest(http.MethodPatch, "http://localhost:8080"+utils.NOTIFICATION_PATH+response.ID, bytes.NewBuffer(jsonPayload))
 	// recorder
@@ -79,6 +86,7 @@ func TestPatchRequest(t *testing.T) {
 	if resp.StatusCode != http.StatusNoContent {
 		t.Errorf("Status code was %v, expected %v", resp.StatusCode, http.StatusNoContent)
 	}
+	t.Log("TestPatchRequest: success")
 }
 
 // Test to get the webhook just created

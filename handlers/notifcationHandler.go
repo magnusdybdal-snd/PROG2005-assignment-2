@@ -30,6 +30,7 @@ func HandleNotification(w http.ResponseWriter, r *http.Request) {
 }
 
 func patchWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
+	log.Println("Recieved " + r.Method + " request.")
 	//values to be used to talk to firestore
 	var webhookID string
 	var collection string
@@ -43,7 +44,7 @@ func patchWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
 
 	//get context and path value
 	ctx := r.Context()
-	webhookID = r.PathValue("id")
+	//check if the path is empty
 	if webhookID == "" {
 		log.Println("Error, webhook id is required")
 		http.Error(w, "Error webhook id is required.", http.StatusBadRequest)
@@ -104,6 +105,8 @@ func registerNewWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
 		http.Error(w, "This method does not offer any functionality outside of: "+utils.NOTIFICATION_PATH, http.StatusBadRequest)
 		return
 	}
+	log.Println("Recieved " + r.Method + " request.")
+
 	//if it is a test, you need to set the client manually
 	//variables will have to be set differently too
 	var collection string
@@ -167,6 +170,8 @@ func registerNewWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
 }
 
 func deleteWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
+	log.Println("Recieved " + r.Method + " request.")
+
 	//variables will be set according to the test or not
 	var collection string
 	var webhookID string
@@ -211,6 +216,8 @@ func deleteWebhook(w http.ResponseWriter, r *http.Request, isTest bool) {
 }
 
 func getWebhooks(w http.ResponseWriter, r *http.Request, isTest bool) {
+	log.Println("Recieved " + r.Method + " request.")
+
 	//variables will be set according to the test or not
 	var collection string
 	var webhookID string
