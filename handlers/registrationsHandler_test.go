@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -21,11 +20,7 @@ import (
 )
 
 func TestUpdateDocument(t *testing.T) {
-	originalOutput := log.Writer()
-	log.SetOutput(io.Discard)
-	defer log.SetOutput(originalOutput)
-
-	// Initialize Firestore - This should connect to your TEST environment/emulator
+	// Initialize Firestore
 	if err := utils.InitFirestore(); err != nil {
 		log.Fatalf("Error initializing Firestore for test: %v", err)
 	}
@@ -37,12 +32,18 @@ func TestUpdateDocument(t *testing.T) {
 		requestURL     string // Request URL, used to get id of document.
 		wantStatusCode int    // Wanted staus.
 		createTestDoc  bool   // Should a test document be created?
-		docNotFound    bool   // Does document stil exist?
 	}{
 		{
 			name:           "Sucsessful update",
 			requestURL:     utils.REGISTRATION_PATH,
 			wantStatusCode: http.StatusOK,
+			createTestDoc:  true,
+		},
+		{
+			name:           "Doc not found",
+			requestURL:     utils.REGISTRATION_PATH,
+			wantStatusCode: http.StatusNotFound,
+			createTestDoc:  false,
 		},
 	}
 
@@ -85,13 +86,14 @@ func TestUpdateDocument(t *testing.T) {
 			// Create a context
 			ctx := context.Background()
 
-			// Create mock document to be tested upon in database.
-			_, err := docRef.Set(ctx, mockDocData)
-			if err != nil {
-				// Stop the test immediately if setup fails
-				t.Fatalf("SETUP: Failed to create test document %s: %v", testDocID, err)
+			if tc.createTestDoc {
+				// Create mock document to be tested upon in database.
+				_, err := docRef.Set(ctx, mockDocData)
+				if err != nil {
+					// Stop the test immediately if setup fails
+					t.Fatalf("Failed to create test document %s: %v", testDocID, err)
+				}
 			}
-
 			// Marshall to JSON (make it usable)
 			updateRequestJSON, err := json.Marshal(updateRequest)
 			if err != nil {
@@ -108,7 +110,8 @@ func TestUpdateDocument(t *testing.T) {
 
 			// 2. Use updateDocument() to update document
 			updateDocument(w, r, ctx, true)
-			if w.Code != tc.wantStatusCode {
+
+			if (w.Code != tc.wantStatusCode) == tc.createTestDoc {
 				t.Errorf("Handler response code: want %d, got %d. Body %s", tc.wantStatusCode, w.Code, w.Body.String())
 			}
 
@@ -131,19 +134,22 @@ func TestUpdateDocument(t *testing.T) {
 				t.Errorf("Updated document data does not match. Got: %v, Want: %v", updatedData, mockDocData)
 			}
 
-			t.Cleanup(func() {
-				t.Logf("CLEANUP: Attempting to delete document %s", testDocID)
-				// Use a background context, as the original test context might be done.
-				cleanupCtx := context.Background()
-				_, delErr := docRef.Delete(cleanupCtx)
+			// If mock document is created, make sure it is deleted.
+			if !tc.createTestDoc {
+				t.Cleanup(func() {
+					t.Logf("CLEANUP: Attempting to delete document %s", testDocID)
+					// Use a background context, as the original test context might be done.
+					cleanupCtx := context.Background()
+					_, delErr := docRef.Delete(cleanupCtx)
 
-				// Log errors during cleanup, but ignore 'NotFound' as that's okay.
-				if delErr != nil && status.Code(delErr) != codes.NotFound {
-					t.Logf("CLEANUP WARN: Failed to delete test document %s: %v", testDocID, delErr)
-				} else {
-					t.Logf("CLEANUP: Successfully deleted or confirmed absence of document %s", testDocID)
-				}
-			})
+					// Log errors during cleanup, but ignore 'NotFound' as that's okay.
+					if delErr != nil && status.Code(delErr) != codes.NotFound {
+						t.Logf("CLEANUP WARN: Failed to delete test document %s: %v", testDocID, delErr)
+					} else {
+						t.Logf("CLEANUP: Successfully deleted or confirmed absence of document %s", testDocID)
+					}
+				})
+			}
 		})
 	}
 }
