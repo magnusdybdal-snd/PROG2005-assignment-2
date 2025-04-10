@@ -91,6 +91,7 @@ func TestPatchRequest(t *testing.T) {
 
 // Test to get the webhook just created
 func TestOneGetRequest(t *testing.T) {
+	t.Log("Testing get request based on ID")
 	// Test the document just created
 	req := httptest.NewRequest(http.MethodGet, "http://localhost:8080"+utils.NOTIFICATION_PATH+response.ID, nil)
 	// Get the recorder
@@ -120,10 +121,12 @@ func TestOneGetRequest(t *testing.T) {
 	if response2.ID != response.ID {
 		t.Errorf("Response ID was %v, expected %v", response2.ID, response.ID)
 	}
+	t.Log("Get request based on ID successful")
 }
 
 // Test to get all webhooks registerd
 func TestGetRequest(t *testing.T) {
+	t.Log("Testing get request")
 	// Make the request
 	req := httptest.NewRequest(http.MethodGet, "http://localhost:8080"+utils.NOTIFICATION_PATH, nil)
 	// Get the recorder
@@ -155,10 +158,12 @@ func TestGetRequest(t *testing.T) {
 	if len(response2) < 1 {
 		t.Errorf("Response body was empty")
 	}
+	t.Log("Get request successful")
 }
 
 // Delete the created document
 func TestDeleteRequest(t *testing.T) {
+	t.Log("Testing delete request")
 	//make request
 	req := httptest.NewRequest(http.MethodDelete, "http://localhost:8080"+utils.NOTIFICATION_PATH+response.ID, nil)
 	//register the recorder
@@ -175,4 +180,5 @@ func TestDeleteRequest(t *testing.T) {
 	if resp.StatusCode != http.StatusNoContent {
 		t.Errorf("Status code was %v, expected %v", resp.StatusCode, http.StatusNoContent)
 	}
+	t.Log("Delete request successful")
 }
