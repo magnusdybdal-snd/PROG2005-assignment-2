@@ -144,7 +144,7 @@ func TestGetFirestoreDoc(t *testing.T) {
 		if actualErr == nil {
 			t.Fatalf("GetFirestoreDocument[DashboardConfig]() expected an unmarshal error, but got nil")
 		}
-		expectedErrorMsg := "Failed to unmarshal data for document"
+		expectedErrorMsg := "failed to unmarshal data for document"
 		if !strings.Contains(actualErr.Error(), expectedErrorMsg) {
 			t.Errorf("GetFirestoreDocument[DashboardConfig]() error = %q, want error containing %q", actualErr.Error(), expectedErrorMsg)
 		}
