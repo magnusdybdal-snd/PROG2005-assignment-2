@@ -89,7 +89,7 @@ func updateDocument(w http.ResponseWriter, r *http.Request, ctx context.Context,
 	// Create the updated document with new data and timestamp
 	var updatedDoc utils.DashboardAlterationTime
 	updatedDoc.DashboardAlteration = updateData
-	updatedDoc.LastRetrieval = time.Now() // update timestamp
+	updatedDoc.LastRetrieval = time.Now().Format("20060102 15:04") // update timestamp
 
 	// Update the document in Firestore
 	_, err = res.Set(ctx, updatedDoc)
@@ -217,7 +217,7 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Cont
 			return
 		}
 
-		s.LastRetrieval = time.Now() // update timestamp
+		s.LastRetrieval = time.Now().Format("20060102 15:04") // update timestamp
 
 		id, _, err2 := utils.FirestoreClient.Collection(collection).Add(ctx, s)
 		if err2 != nil {
@@ -228,10 +228,9 @@ func registerDashConfig(w http.ResponseWriter, r *http.Request, ctx context.Cont
 
 		invokeWebhook(utils.REGISTER, s.IsoCode, ctx)
 
-		log.Println("Document added successfully, creating response")
 		response := struct {
-			ID            string    `json:"id"`
-			LastRetrieval time.Time `json:"lastChange"`
+			ID            string `json:"id"`
+			LastRetrieval string `json:"lastChange"`
 		}{
 			ID:            id.ID,
 			LastRetrieval: s.LastRetrieval,
@@ -298,7 +297,6 @@ func displayDocument(w http.ResponseWriter, r *http.Request, ctx context.Context
 	} else {
 
 		iter := utils.FirestoreClient.Collection(collection).Documents(ctx)
-
 		// Array used to store multiple documents.
 		var registrations []utils.RegistrationGetResponse
 
@@ -322,6 +320,12 @@ func displayDocument(w http.ResponseWriter, r *http.Request, ctx context.Context
 			}
 			// Append each document into array.
 			registrations = append(registrations, documentResponse)
+		}
+
+		// Check if database is empty
+		if len(registrations) == 0 {
+			http.Error(w, http.StatusText(http.StatusNoContent), http.StatusNoContent)
+			return
 		}
 
 		response = registrations

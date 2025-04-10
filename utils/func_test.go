@@ -59,7 +59,7 @@ func TestGetFirestoreDoc(t *testing.T) {
 				Area:             true,
 				TargetCurrencies: []string{"EUR", "SEK"},
 			},
-			LastRetrieval: time.Date(2025, 4, 8, 15, 30, 45, 0, time.UTC), // Fixed time for testing
+			LastRetrieval: "00010101 00:00", // 0-value for testing
 		}
 
 		// 1. Setup: Add the document to the database for testing

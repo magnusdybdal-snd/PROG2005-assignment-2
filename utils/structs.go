@@ -45,7 +45,7 @@ type DashboardConfig struct {
 		Area             bool     `firestore:"area" json:"area"`
 		TargetCurrencies []string `firestore:"targetCurrencies" json:"targetCurrencies"`
 	} `firestore:"features" json:"features"`
-	LastRetrieval time.Time `firestore:"lastChange" json:"lastChange"`
+	LastRetrieval string `firestore:"lastChange" json:"lastChange"`
 }
 
 // === Structs used in registrations handler ===
@@ -72,7 +72,7 @@ type DashboardAlteration struct {
  */
 type DashboardAlterationTime struct {
 	DashboardAlteration
-	LastRetrieval time.Time `firestore:"lastChange" json:"lastChange"`
+	LastRetrieval string `firestore:"lastChange" json:"lastChange"`
 }
 
 

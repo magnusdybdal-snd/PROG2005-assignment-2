@@ -11,7 +11,7 @@
                   "area": false,
                   "targetCurrencies": ["EUR", "USD", "SEK"]
                },
-    "lastChange": "2025-04-08T12:07:00.832Z"
+    "lastChange": "20250410 12:43"
 },
    {
       "id": "VHBa7l2K1pFMkHZ6s951",
@@ -26,6 +26,6 @@
                      "area": false,
                      "targetCurrencies": ["EUR", "USD", "NOK"]
                   },
-       "lastChange": "2025-04-08T10:09:01.244Z"
+       "lastChange": "20250409 15:41"
    }
 ]
