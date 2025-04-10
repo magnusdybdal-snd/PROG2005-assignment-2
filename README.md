@@ -127,6 +127,7 @@ It will log the http status code of the response and return a 200 status code if
 The endpoints were created by: <br>
 Registration endpoint/handler - Marius Eilertsen (mailert) <br>
 Dashboards endpoint/handler - Magnus Dybdal (magndy) <br>
+Caching - Magnus Dybdal (magndy) <br>
 Notification endpoint/handler/Webhook invokation - Ole Marius Glomsrud (olemgl) <br>
 Status endpoint - Ole Marius Glomsrud (olemgl) <br>
 All tests were written by the respected authors.
