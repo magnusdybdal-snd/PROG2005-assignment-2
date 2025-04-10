@@ -2,6 +2,8 @@ package utils
 
 import "time"
 
+// === Structs used in notification hanlder ===
+
 type SendNotification struct {
 	ID      string `json:"id"`
 	Country string `firestore:"country" json:"country"`
@@ -27,8 +29,9 @@ type WebhookId struct {
 	ID string `json:"id"`
 }
 
+
 /*
- *	Struct for dashboard configurations
+ *	Struct for dashboard configurations, used by registratoin handler and dashboard handler
  */
 type DashboardConfig struct {
 	Country  string `firestore:"country" json:"country"`
@@ -44,6 +47,8 @@ type DashboardConfig struct {
 	} `firestore:"features" json:"features"`
 	LastRetrieval time.Time `firestore:"lastChange" json:"lastChange"`
 }
+
+// === Structs used in registrations handler ===
 
 /*
  *	Struct for dashboard alterations (PUT) - without ID and TIME(!)
@@ -69,6 +74,9 @@ type DashboardAlterationTime struct {
 	DashboardAlteration
 	LastRetrieval time.Time `firestore:"lastChange" json:"lastChange"`
 }
+
+
+// === Structs used in dahsboard handler ===
 
 /*
  *	Response struct from dashboards handler
@@ -133,6 +141,34 @@ type RegistrationGetResponse struct {
 	DashboardConfig
 }
 
+
+/*
+*	Struct used to hold cached information from RestCountries
+*/
+type CachedRestCountries struct {
+	Data      RestCountriesResponse `firestore:"data"`
+	Timestamp time.Time             `firestore:"timestamp"`
+}
+
+/*
+*	Struct used to hold cached information from Metro API
+*/
+type CachedMetro struct {
+	Data      MetroMeanValues `firestore:"data"`
+	Timestamp time.Time       `firestore:"timestamp"`
+}
+
+/*
+*	Struct used to hold cached information from Currency API
+*/
+type CachedCurrency struct {
+	Data      map[string]float64 `firestore:"data"`
+	Timestamp time.Time          `firestore:"timestamp"`
+}
+
+/*
+*	Struct used to hold status information in status endpoint
+*/
 type Status struct {
 	Countries_api   int    `json:"countries_api"`
 	Metro_api       int    `json:"metro_api"`
@@ -141,19 +177,4 @@ type Status struct {
 	Webhooks        int    `json:"webhooks"`
 	Version         string `json:"version"`
 	Uptime          int    `json:"uptime"`
-}
-
-type CachedRestCountries struct {
-	Data      RestCountriesResponse `firestore:"data"`
-	Timestamp time.Time             `firestore:"timestamp"`
-}
-
-type CachedMetro struct {
-	Data      MetroMeanValues `firestore:"data"`
-	Timestamp time.Time       `firestore:"timestamp"`
-}
-
-type CachedCurrency struct {
-	Data      map[string]float64 `firestore:"data"`
-	Timestamp time.Time          `firestore:"timestamp"`
 }
